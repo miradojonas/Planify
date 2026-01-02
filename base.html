@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plinify - {% block title %}Accueil{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="logo">
+                <i class="fas fa-star"></i>
+                Plinify
+            </div>
+            
+            {% if current_user.is_authenticated %}
+            <div class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-home"></i>
+                    Dashboard
+                </a>
+                <a href="{{ url_for('calendar') }}" class="nav-link {% if request.endpoint == 'calendar' %}active{% endif %}">
+                    <i class="fas fa-calendar"></i>
+                    Calendrier
+                </a>
+                <a href="{{ url_for('edt') }}" class="nav-link {% if request.endpoint == 'edt' %}active{% endif %}">
+                    <i class="fas fa-table"></i>
+                    EDT
+                </a>
+                <a href="{{ url_for('chat_inbox') }}" class="nav-link {% if request.endpoint == 'chat_inbox' %}active{% endif %}">
+                    <i class="fas fa-comments"></i>
+                    Messages
+                </a>
+                <a href="{{ url_for('ai_chat') }}" class="nav-link {% if request.endpoint == 'ai_chat' %}active{% endif %}">
+                    <i class="fas fa-robot"></i>
+                    Assistant IA
+                </a>
+                
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        {{ current_user.get_initials() }}
+                    </div>
+                    <span class="user-name">{{ current_user.prenom }}</span>
+                    <a href="{{ url_for('logout') }}" class="nav-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="main-container">
+        {% if current_user.is_authenticated %}
+        <aside class="sidebar">
+            <ul class="sidebar-menu">
+                <li class="sidebar-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-home"></i>
+                    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                </li>
+                <li class="sidebar-item {% if request.endpoint == 'calendar' %}active{% endif %}">
+                    <i class="fas fa-calendar"></i>
+                    <a href="{{ url_for('calendar') }}">Calendrier</a>
+                </li>
+                <li class="sidebar-item {% if request.endpoint == 'edt' %}active{% endif %}">
+                    <i class="fas fa-table"></i>
+                    <a href="{{ url_for('edt') }}">Emploi du temps</a>
+                </li>
+                <li class="sidebar-item">
+                    <i class="fas fa-tasks"></i>
+                    <a href="#">Mes Devoirs</a>
+                </li>
+                <li class="sidebar-item {% if request.endpoint == 'chat_inbox' %}active{% endif %}">
+                    <i class="fas fa-comments"></i>
+                    <a href="{{ url_for('chat_inbox') }}">Messages</a>
+                </li>
+                <li class="sidebar-item {% if request.endpoint == 'ai_chat' %}active{% endif %}">
+                    <i class="fas fa-robot"></i>
+                    <a href="{{ url_for('ai_chat') }}">Assistant IA</a>
+                </li>
+                {% if current_user.is_admin() %}
+                <li class="sidebar-item">
+                    <i class="fas fa-cog"></i>
+                    <a href="#">Administration</a>
+                </li>
+                {% endif %}
+            </ul>
+        </aside>
+        {% endif %}
+
+        <main class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'error' if category == 'error' else 'success' }} fade-in">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

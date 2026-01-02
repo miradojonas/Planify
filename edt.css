@@ -1,0 +1,147 @@
+/* Styles spécifiques pour l'EDT */
+.edt-container {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.edt-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    background: var(--light);
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.edt-filters {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: white;
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.edt-filter {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    background: white;
+    font-size: 0.875rem;
+}
+
+.edt-grid {
+    display: grid;
+    grid-template-columns: 100px repeat(6, 1fr);
+    gap: 1px;
+    background: var(--gray-light);
+}
+
+.edt-time-slot {
+    background: var(--dark);
+    color: white;
+    font-weight: 600;
+    padding: 1rem 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 0.875rem;
+}
+
+.edt-cell {
+    background: white;
+    padding: 0.5rem;
+    min-height: 100px;
+    position: relative;
+}
+
+.course-slot {
+    border-left: 4px solid;
+    padding: 0.5rem;
+    border-radius: 8px;
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.course-slot:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.course-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--dark);
+}
+
+.course-info {
+    font-size: 0.7rem;
+    opacity: 0.8;
+    color: var(--dark);
+}
+
+.course-info span {
+    display: block;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .edt-grid {
+        grid-template-columns: 80px repeat(6, 1fr);
+        font-size: 0.75rem;
+    }
+    
+    .edt-time-slot {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .edt-grid {
+        grid-template-columns: 60px repeat(6, 1fr);
+    }
+    
+    .edt-cell {
+        padding: 0.25rem;
+        min-height: 80px;
+    }
+    
+    .course-slot {
+        padding: 0.25rem;
+        font-size: 0.7rem;
+    }
+    
+    .edt-filters {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+/* Animation pour le chargement */
+.edt-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.edt-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--gray-light);
+    border-top: 2px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}

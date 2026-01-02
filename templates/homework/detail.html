@@ -1,0 +1,780 @@
+{% extends "base.html" %}
+
+{% block title %}{{ homework.title }} - PLANIFY{% endblock %}
+
+{% block content %}
+<div class="homework-detail">
+    <div class="detail-header">
+        <div class="breadcrumb">
+            <a href="{{ url_for('homework_page') }}">
+                {% if current_user.role == 'professeur' %}
+                    Mes Devoirs
+                {% else %}
+                    Mes Devoirs
+                {% endif %}
+            </a>
+            <i class="fas fa-chevron-right"></i>
+            <span>{{ homework.title }}</span>
+        </div>
+        
+        {% if current_user.role == 'professeur' and homework.teacher_id == current_user.id %}
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="editHomework({{ homework.id }})">
+                <i class="fas fa-edit"></i> Modifier
+            </button>
+            <button class="btn btn-danger" onclick="deleteHomework({{ homework.id }}, '{{ homework.title }}')">
+                <i class="fas fa-trash"></i> Supprimer
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="homework-content">
+        <!-- Informations principales -->
+        <div class="homework-info">
+            <div class="info-card">
+                <h1>{{ homework.title }}</h1>
+                <div class="homework-meta">
+                    <div class="meta-item">
+                        <i class="fas fa-user-tie"></i>
+                        <span>{{ homework.teacher.prenom }} {{ homework.teacher.nom }}</span>
+                    </div>
+                    {% if homework.subject %}
+                    <div class="meta-item">
+                        <i class="fas fa-book"></i>
+                        <span>{{ homework.subject }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="meta-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>Créé le {{ homework.created_at[:10] }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span class="{% if homework.is_overdue %}overdue{% endif %}">
+                            Échéance: {{ homework.due_date[:10] }} à {{ homework.due_date[11:16] }}
+                            {% if homework.is_overdue %}
+                                <span class="overdue-text">(Échéance passée)</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-star"></i>
+                        <span>{{ homework.points }} points</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="description-card">
+                <h3><i class="fas fa-file-alt"></i> Description</h3>
+                <div class="description-content">
+                    {{ homework.description|nl2br|safe }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Vue Élève -->
+        {% if current_user.role == 'eleve' %}
+        <div class="student-section">
+            {% if student_submission %}
+            <!-- Soumission existante -->
+            <div class="submission-card submitted">
+                <div class="submission-header">
+                    <h3>
+                        <i class="fas fa-check-circle"></i>
+                        Devoir rendu
+                    </h3>
+                    <span class="submission-date">
+                        Rendu le {{ student_submission.submitted_at[:10] }} à {{ student_submission.submitted_at[11:16] }}
+                    </span>
+                </div>
+                
+                {% if student_submission.grade is not none %}
+                <div class="grade-display">
+                    <div class="grade-score">
+                        {{ student_submission.grade }}/{{ homework.points }}
+                    </div>
+                    <div class="grade-percentage">
+                        {{ "%.1f"|format((student_submission.grade / homework.points) * 100) }}%
+                    </div>
+                </div>
+                
+                {% if student_submission.feedback %}
+                <div class="feedback-display">
+                    <h4><i class="fas fa-comment"></i> Commentaires du professeur</h4>
+                    <div class="feedback-content">
+                        {{ student_submission.feedback|nl2br|safe }}
+                    </div>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="pending-grade">
+                    <i class="fas fa-hourglass-half"></i>
+                    En attente de correction
+                </div>
+                {% endif %}
+                
+                <div class="submission-content">
+                    <h4><i class="fas fa-file-text"></i> Votre réponse</h4>
+                    <div class="content-display">
+                        {{ student_submission.content|nl2br|safe }}
+                    </div>
+                </div>
+                
+                {% if not homework.is_overdue %}
+                <button class="btn btn-primary" onclick="editSubmission()">
+                    <i class="fas fa-edit"></i> Modifier ma réponse
+                </button>
+                {% endif %}
+            </div>
+            {% else %}
+            <!-- Formulaire de soumission -->
+            <div class="submission-card not-submitted">
+                <div class="submission-header">
+                    <h3>
+                        <i class="fas fa-paper-plane"></i>
+                        Rendre le devoir
+                    </h3>
+                    {% if homework.is_overdue %}
+                    <span class="overdue-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Échéance dépassée
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <form id="submissionForm" {% if homework.is_overdue %}class="disabled"{% endif %}>
+                    <div class="form-group">
+                        <label for="submissionContent">Votre réponse *</label>
+                        <textarea id="submissionContent" name="content" rows="10" 
+                                placeholder="Saisissez votre réponse ici..." 
+                                {% if homework.is_overdue %}disabled{% endif %}
+                                required></textarea>
+                    </div>
+                    
+                    {% if not homework.is_overdue %}
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Rendre le devoir
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="overdue-message">
+                        <i class="fas fa-lock"></i>
+                        La date limite de soumission est dépassée.
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Vue Professeur -->
+        {% if current_user.role == 'professeur' and homework.teacher_id == current_user.id %}
+        <div class="teacher-section">
+            <div class="submissions-overview">
+                <h3><i class="fas fa-users"></i> Soumissions des élèves</h3>
+                
+                <div class="submissions-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ homework.submission_count }}</span>
+                        <span class="stat-label">Soumissions</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ submissions|selectattr('grade')|list|length }}</span>
+                        <span class="stat-label">Corrigées</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ (submissions|selectattr('grade')|list|length - homework.submission_count)|abs }}</span>
+                        <span class="stat-label">En attente</span>
+                    </div>
+                </div>
+            </div>
+
+            {% if submissions %}
+            <div class="submissions-list">
+                {% for submission in submissions %}
+                <div class="submission-item">
+                    <div class="student-info">
+                        <div class="student-name">
+                            <i class="fas fa-user"></i>
+                            {{ submission.student.prenom }} {{ submission.student.nom }}
+                        </div>
+                        <div class="submission-date">
+                            Rendu le {{ submission.submitted_at[:10] }} à {{ submission.submitted_at[11:16] }}
+                        </div>
+                    </div>
+                    
+                    <div class="submission-status">
+                        {% if submission.grade is not none %}
+                        <div class="grade-display">
+                            <span class="grade">{{ submission.grade }}/{{ homework.points }}</span>
+                            <span class="percentage">({{ "%.1f"|format((submission.grade / homework.points) * 100) }}%)</span>
+                        </div>
+                        {% else %}
+                        <span class="pending">En attente</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="submission-actions">
+                        <button class="btn btn-sm btn-primary" onclick="viewSubmission({{ submission.id }})">
+                            <i class="fas fa-eye"></i> Voir
+                        </button>
+                        {% if submission.grade is none %}
+                        <button class="btn btn-sm btn-success" onclick="gradeSubmission({{ submission.id }})">
+                            <i class="fas fa-star"></i> Corriger
+                        </button>
+                        {% else %}
+                        <button class="btn btn-sm btn-secondary" onclick="editGrade({{ submission.id }})">
+                            <i class="fas fa-edit"></i> Modifier
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-submissions">
+                <i class="fas fa-inbox"></i>
+                <p>Aucune soumission pour ce devoir.</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Correction -->
+<div class="modal" id="gradeModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-star"></i> Corriger la soumission</h3>
+            <button class="modal-close" onclick="closeGradeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="studentSubmissionContent"></div>
+            <form id="gradeForm">
+                <input type="hidden" id="submissionId">
+                <div class="form-group">
+                    <label for="gradeInput">Note (sur {{ homework.points }})</label>
+                    <input type="number" id="gradeInput" name="grade" min="0" max="{{ homework.points }}" step="0.5" required>
+                </div>
+                <div class="form-group">
+                    <label for="feedbackInput">Commentaires (optionnel)</label>
+                    <textarea id="feedbackInput" name="feedback" rows="4" placeholder="Commentaires pour l'élève..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeGradeModal()">Annuler</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Enregistrer la note
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.homework-detail {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.detail-header {
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.breadcrumb a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb i {
+    font-size: 0.75rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.homework-content {
+    display: grid;
+    gap: 2rem;
+}
+
+.info-card, .description-card, .submission-card {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.info-card h1 {
+    margin: 0 0 1rem 0;
+    color: var(--dark);
+    font-size: 1.75rem;
+}
+
+.homework-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.meta-item i {
+    color: var(--primary);
+    width: 16px;
+}
+
+.meta-item .overdue {
+    color: #dc3545;
+}
+
+.overdue-text {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.description-card h3 {
+    margin: 0 0 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--dark);
+}
+
+.description-content {
+    color: var(--gray);
+    line-height: 1.6;
+    font-size: 1rem;
+}
+
+.submission-card.submitted {
+    border-left: 4px solid #28a745;
+}
+
+.submission-card.not-submitted {
+    border-left: 4px solid var(--primary);
+}
+
+.submission-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.submission-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--dark);
+}
+
+.submission-date {
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.overdue-warning {
+    color: #dc3545;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.grade-display {
+    background: var(--light);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.grade-score {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.grade-percentage {
+    color: var(--gray);
+    margin-top: 0.5rem;
+}
+
+.feedback-display {
+    margin-bottom: 1.5rem;
+}
+
+.feedback-display h4 {
+    margin: 0 0 0.75rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--dark);
+}
+
+.feedback-content, .content-display {
+    background: var(--light);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    color: var(--gray);
+    line-height: 1.6;
+}
+
+.pending-grade {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--gray);
+    background: var(--light);
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.3s ease;
+}
+
+.form-group textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.form-group textarea:disabled {
+    background: var(--light);
+    color: var(--gray);
+}
+
+.form-actions {
+    margin-top: 1.5rem;
+}
+
+.overdue-message {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.submissions-overview h3 {
+    margin: 0 0 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--dark);
+}
+
+.submissions-stats {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--gray);
+}
+
+.submissions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.submission-item {
+    background: var(--light);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.student-info {
+    flex: 1;
+}
+
+.student-name {
+    font-weight: 600;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.submission-status .grade-display {
+    background: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+}
+
+.submission-status .grade {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.submission-status .percentage {
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.submission-status .pending {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.submission-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.no-submissions {
+    text-align: center;
+    padding: 3rem;
+    color: var(--gray);
+}
+
+.no-submissions i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Modal overrides for this page */
+.modal-content {
+    max-width: 700px;
+}
+
+#studentSubmissionContent {
+    background: var(--light);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    color: var(--gray);
+    line-height: 1.6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .homework-detail {
+        padding: 1rem;
+    }
+    
+    .detail-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .homework-meta {
+        grid-template-columns: 1fr;
+    }
+    
+    .submissions-stats {
+        justify-content: space-around;
+    }
+    
+    .submission-item {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+}
+</style>
+
+<script>
+// Soumission élève
+document.getElementById('submissionForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const content = document.getElementById('submissionContent').value;
+    if (!content.trim()) {
+        alert('Veuillez saisir votre réponse.');
+        return;
+    }
+    
+    fetch(`/api/homework/{{ homework.id }}/submit`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: content })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Devoir rendu avec succès!');
+            location.reload();
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la soumission');
+    });
+});
+
+// Fonctions professeur
+function viewSubmission(submissionId) {
+    // Charger et afficher les détails de la soumission
+    fetch(`/api/homework/submission/${submissionId}`)
+    .then(response => response.json())
+    .then(submission => {
+        document.getElementById('studentSubmissionContent').innerHTML = 
+            `<h4><i class="fas fa-user"></i> ${submission.student_name}</h4>
+             <div style="white-space: pre-wrap;">${submission.content}</div>`;
+        
+        if (submission.grade !== null) {
+            document.getElementById('gradeInput').value = submission.grade;
+            document.getElementById('feedbackInput').value = submission.feedback || '';
+        }
+        
+        document.getElementById('submissionId').value = submissionId;
+        document.getElementById('gradeModal').style.display = 'flex';
+    });
+}
+
+function gradeSubmission(submissionId) {
+    viewSubmission(submissionId);
+}
+
+function editGrade(submissionId) {
+    viewSubmission(submissionId);
+}
+
+function closeGradeModal() {
+    document.getElementById('gradeModal').style.display = 'none';
+    document.getElementById('gradeForm').reset();
+}
+
+// Correction
+document.getElementById('gradeForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const submissionId = document.getElementById('submissionId').value;
+    const grade = document.getElementById('gradeInput').value;
+    const feedback = document.getElementById('feedbackInput').value;
+    
+    fetch(`/api/homework/submission/${submissionId}/grade`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ grade: parseFloat(grade), feedback: feedback })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Note enregistrée avec succès!');
+            location.reload();
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de l\'enregistrement');
+    });
+});
+
+function editSubmission() {
+    // Permettre la modification de la soumission
+    alert('Fonctionnalité de modification à venir');
+}
+
+function editHomework(homeworkId) {
+    alert('Fonctionnalité de modification à venir');
+}
+
+function deleteHomework(homeworkId, title) {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer le devoir "${title}" ?\n\nToutes les soumissions seront également supprimées.`)) {
+        fetch(`/api/homework/${homeworkId}/delete`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('Devoir supprimé avec succès!');
+                window.location.href = '/homework';
+            } else {
+                alert('Erreur: ' + result.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la suppression');
+        });
+    }
+}
+</script>
+{% endblock %}

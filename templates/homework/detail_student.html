@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}{{ homework.title }} - Devoir{% endblock %}
+
+{% block content %}
+<div class="homework-detail">
+    <h1>{{ homework.title }}</h1>
+    <p><strong>Professeur:</strong> {{ homework.teacher.prenom }} {{ homework.teacher.nom }}</p>
+    <p><strong>Échéance:</strong> {{ homework.due_date[:10] }}</p>
+
+    <div class="description">
+        {{ homework.description|default('Aucune description')|nl2br|safe }}
+    </div>
+
+    {% if student_submission %}
+    <h3>Votre soumission</h3>
+    <div>{{ student_submission.content|nl2br|safe }}</div>
+    {% else %}
+    <p>Vous n'avez pas encore rendu ce devoir.</p>
+    <a class="btn btn-primary" href="{{ url_for('homework') }}">Retour aux devoirs</a>
+    {% endif %}
+</div>
+{% endblock %}

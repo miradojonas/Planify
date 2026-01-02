@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}Mes Notifications - PLANIFY{% endblock %}
+
+{% block content %}
+<div class="notifications-page">
+    <div class="page-header">
+        <h1><i class="fas fa-bell"></i> Mes Notifications</h1>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="markAllAsRead()">
+                <i class="fas fa-check-double"></i> Tout marquer comme lu
+            </button>
+            <button class="btn btn-outline" onclick="loadNotifications()">
+                <i class="fas fa-sync"></i> Actualiser
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters-section">
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all" onclick="filterNotifications('all')">
+                Toutes (<span id="countAll">0</span>)
+            </button>
+            <button class="filter-tab" data-filter="unread" onclick="filterNotifications('unread')">
+                Non lues (<span id="countUnread">0</span>)
+            </button>
+            <button class="filter-tab" data-filter="homework" onclick="filterNotifications('homework')">
+                Devoirs (<span id="countHomework">0</span>)
+            </button>
+            <button class="filter-tab" data-filter="grade" onclick="filterNotifications('grade')">
+                Notes (<span id="countGrade">0</span>)
+            </button>
+            <button class="filter-tab" data-filter="reminder" onclick="filterNotifications('reminder')">
+                Rappels (<span id="countReminder">0</span>)
+            </button>
+        </div>
+    </div>
+
+    <!-- Liste des notifications -->
+    <div class="notifications-content">
+        <div class="loading-state" id="loadingState">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Chargement des notifications...</p>
+        </div>
+
+        <div class="notifications-list" id="notificationsList">
+            <!-- Les notifications seront chargées ici -->
+        </div>
+
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <i class="fas fa-bell-slash"></i>
+            <h3>Aucune notification</h3>
+            <p>Vous n'avez aucune notification pour le moment.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.notifications-page {
+    padding: 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-light);
+}
+
+.page-header h1 {
+    margin: 0;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.filters-section {
+    background: white;
+    padding: 1rem;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-tab {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--gray-light);
+    background: white;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.filter-tab:hover {
+    border-color: var(--primary);
+    background: rgba(74, 144, 226, 0.05);
+}
+
+.filter-tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.notifications-content {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    min-height: 400px;
+}
+
+.loading-state, .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--gray);
+}
+
+.loading-state i, .empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: var(--dark);
+}
+
+.notifications-list {
+    display: none;
+}
+
+.notification-card {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--gray-light);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.notification-card:hover {
+    background: var(--light);
+}
+
+.notification-card:last-child {
+    border-bottom: none;
+}
+
+.notification-card.unread {
+    background: rgba(74, 144, 226, 0.03);
+    border-left: 4px solid var(--primary);
+}
+
+.notification-card.unread::before {
+    content: '';
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    width: 10px;
+    height: 10px;
+    background: var(--primary);
+    border-radius: 50%;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.notification-title {
+    font-weight: 600;
+    color: var(--dark);
+    font-size: 1rem;
+    margin: 0;
+}
+
+.notification-type-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.notification-type-badge.homework {
+    background: rgba(74, 144, 226, 0.1);
+    color: var(--primary);
+}
+
+.notification-type-badge.grade {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.notification-type-badge.reminder {
+    background: rgba(255, 193, 7, 0.1);
+    color: #b8860b;
+}
+
+.notification-type-badge.system {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+
+.notification-message {
+    color: var(--gray);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.notification-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--gray);
+}
+
+.notification-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    border-radius: var(--border-radius);
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid var(--gray-light);
+    color: var(--gray);
+}
+
+.btn-outline:hover {
+    background: var(--light);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Animation pour les nouvelles notifications */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.notification-card.new {
+    animation: slideInRight 0.5s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .notifications-page {
+        padding: 1rem;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .filter-tabs {
+        justify-content: center;
+    }
+    
+    .notification-header {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+</style>
+
+<script>
+let currentFilter = 'all';
+let notifications = [];
+
+// Charger les notifications
+async function loadNotifications() {
+    const loading = document.getElementById('loadingState');
+    const list = document.getElementById('notificationsList');
+    const empty = document.getElementById('emptyState');
+    
+    loading.style.display = 'block';
+    list.style.display = 'none';
+    empty.style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/notifications');
+        const data = await response.json();
+        
+        notifications = data.notifications;
+        updateCounts();
+        renderNotifications();
+        
+        loading.style.display = 'none';
+        
+        if (notifications.length === 0) {
+            empty.style.display = 'block';
+        } else {
+            list.style.display = 'block';
+        }
+        
+    } catch (error) {
+        console.error('Erreur:', error);
+        loading.style.display = 'none';
+        empty.style.display = 'block';
+    }
+}
+
+// Mettre à jour les compteurs
+function updateCounts() {
+    document.getElementById('countAll').textContent = notifications.length;
+    document.getElementById('countUnread').textContent = notifications.filter(n => !n.is_read).length;
+    document.getElementById('countHomework').textContent = notifications.filter(n => n.type === 'homework').length;
+    document.getElementById('countGrade').textContent = notifications.filter(n => n.type === 'grade').length;
+    document.getElementById('countReminder').textContent = notifications.filter(n => n.type === 'reminder').length;
+}
+
+// Filtrer les notifications
+function filterNotifications(filter) {
+    currentFilter = filter;
+    
+    // Mettre à jour les onglets
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+    
+    renderNotifications();
+}
+
+// Afficher les notifications
+function renderNotifications() {
+    const list = document.getElementById('notificationsList');
+    
+    let filteredNotifications = notifications;
+    
+    if (currentFilter !== 'all') {
+        if (currentFilter === 'unread') {
+            filteredNotifications = notifications.filter(n => !n.is_read);
+        } else {
+            filteredNotifications = notifications.filter(n => n.type === currentFilter);
+        }
+    }
+    
+    if (filteredNotifications.length === 0) {
+        list.innerHTML = `
+            <div class="empty-filter-state" style="text-align: center; padding: 3rem; color: var(--gray);">
+                <i class="fas fa-filter" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <p>Aucune notification pour ce filtre</p>
+            </div>
+        `;
+        return;
+    }
+    
+    list.innerHTML = filteredNotifications.map(notification => `
+        <div class="notification-card ${!notification.is_read ? 'unread' : ''}" 
+             onclick="handleNotificationClick(${notification.id}, ${notification.homework_id || 'null'})">
+            <div class="notification-header">
+                <h3 class="notification-title">${notification.title}</h3>
+                <span class="notification-type-badge ${notification.type}">${getTypeLabel(notification.type)}</span>
+            </div>
+            <div class="notification-message">${notification.message}</div>
+            <div class="notification-footer">
+                <span class="notification-time">${notification.time_ago}</span>
+                <div class="notification-actions">
+                    ${!notification.is_read ? `
+                        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); markAsRead(${notification.id})">
+                            <i class="fas fa-check"></i> Marquer comme lu
+                        </button>
+                    ` : ''}
+                    ${notification.homework_id ? `
+                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); goToHomework(${notification.homework_id})">
+                            <i class="fas fa-eye"></i> Voir le devoir
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Gérer le clic sur une notification
+async function handleNotificationClick(notificationId, homeworkId) {
+    await markAsRead(notificationId);
+    
+    if (homeworkId) {
+        window.location.href = `/homework/${homeworkId}`;
+    }
+}
+
+// Marquer comme lu
+async function markAsRead(notificationId) {
+    try {
+        await fetch(`/api/notifications/${notificationId}/read`, {
+            method: 'POST'
+        });
+        
+        // Mettre à jour localement
+        const notification = notifications.find(n => n.id === notificationId);
+        if (notification) {
+            notification.is_read = true;
+            updateCounts();
+            renderNotifications();
+        }
+        
+    } catch (error) {
+        console.error('Erreur:', error);
+    }
+}
+
+// Marquer toutes comme lues
+async function markAllAsRead() {
+    try {
+        await fetch('/api/notifications/mark-all-read', {
+            method: 'POST'
+        });
+        
+        notifications.forEach(n => n.is_read = true);
+        updateCounts();
+        renderNotifications();
+        
+        alert('Toutes les notifications ont été marquées comme lues');
+        
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors du marquage');
+    }
+}
+
+// Aller au devoir
+function goToHomework(homeworkId) {
+    window.location.href = `/homework/${homeworkId}`;
+}
+
+// Obtenir le label du type
+function getTypeLabel(type) {
+    const labels = {
+        'homework': 'Devoir',
+        'grade': 'Note',
+        'reminder': 'Rappel',
+        'system': 'Système'
+    };
+    return labels[type] || type;
+}
+
+// Charger au démarrage
+document.addEventListener('DOMContentLoaded', loadNotifications);
+</script>
+{% endblock %}

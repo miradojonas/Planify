@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Plinify</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>
+                    <i class="fas fa-star"></i>
+                    Plinify
+                </h1>
+                <p>Connectez-vous à votre espace</p>
+            </div>
+
+            <form method="POST" class="auth-form">
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i>
+                        Email
+                    </label>
+                    <input type="email" id="email" name="email" placeholder="votre@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i>
+                        Mot de passe
+                    </label>
+                    <input type="password" id="password" name="password" placeholder="Votre mot de passe" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Se connecter
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Pas de compte ? 
+                    <a href="{{ url_for('register') }}">Créer un compte</a>
+                </p>
+            </div>
+
+
+        </div>
+
+        <div class="auth-features">
+            <div class="feature">
+                <i class="fas fa-calendar-check"></i>
+                <h3>Planning Intelligent</h3>
+                <p>Gérez votre emploi du temps efficacement avec notre système EDT avancé</p>
+            </div>
+            <div class="feature">
+                <i class="fas fa-comments"></i>
+                <h3>Communication</h3>
+                <p>Discutez en temps réel avec vos professeurs et camarades</p>
+            </div>
+            <div class="feature">
+                <i class="fas fa-robot"></i>
+                <h3>Assistant IA</h3>
+                <p>Bénéficiez d'un assistant intelligent pour vos études</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

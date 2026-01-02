@@ -1,0 +1,41 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv
+
+# Base de données
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# Uploads
+static/uploads/profiles/*
+
+# Configuration
+.env
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Documentation
+*.md
+!README.md
+
+# Docker
+.dockerignore
+
+# Tests
+tests/
+test_*.py

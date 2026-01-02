@@ -1,0 +1,12 @@
+# docker-compose.yml
+services:
+  flask-app:
+    build: .
+    ports:
+      - "5001:5000"       # 5001 sur ta machine → 5000 dans le conteneur
+    volumes:
+      - .:/app            # permet live-reload avec les fichiers locaux
+    environment:
+      FLASK_APP: app.py
+      FLASK_ENV: development
+    command: flask run --host=0.0.0.0 --port=5000

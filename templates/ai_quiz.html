@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz IA - PLANIFY{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">
+            <i class="fas fa-question-circle"></i>
+            Générateur de Quiz IA
+            {% if current_user.role == 'admin' %}
+            <span class="role-badge admin">🛠️ Admin</span>
+            {% elif current_user.role == 'professeur' %}
+            <span class="role-badge teacher">👨‍🏫 Professeur</span>
+            {% else %}
+            <span class="role-badge student">🎓 Élève</span>
+            {% endif %}
+        </h1>
+        <a href="{{ url_for('ai_chat') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i>
+            Retour à l'assistant
+        </a>
+    </div>
+    
+    <div class="quiz-generator">
+        <div class="quiz-setup">
+            {% if current_user.role == 'admin' %}
+            <h2>🛠️ Quiz Administrateur</h2>
+            <p class="role-description">Créez des quiz d'évaluation pour le personnel et les procédures.</p>
+            {% elif current_user.role == 'professeur' %}
+            <h2>👨‍🏫 Quiz Professeur</h2>
+            <p class="role-description">Créez des quiz pédagogiques pour vos élèves.</p>
+            {% else %}
+            <h2>🎓 Quiz Élève</h2>
+            <p class="role-description">Crée des quiz pour réviser tes cours !</p>
+            {% endif %}
+            
+            <form id="quizForm">
+                <div class="form-group">
+                    <label for="topic">
+                        {% if current_user.role == 'admin' %}
+                        Domaine d'évaluation
+                        {% elif current_user.role == 'professeur' %}
+                        Chapitre/Thème du cours
+                        {% else %}
+                        Sujet à réviser
+                        {% endif %}
+                    </label>
+                    <input type="text" id="topic" 
+                           placeholder="Tapez votre sujet ici..." 
+                           required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="difficulty">Niveau de difficulté</label>
+                    <select id="difficulty">
+                        <option value="facile">Facile</option>
+                        <option value="moyen" selected>Moyen</option>
+                        <option value="difficile">Difficile</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="questionCount">Nombre de questions</label>
+                    <select id="questionCount">
+                        <option value="5">5 questions</option>
+                        <option value="10" selected>10 questions</option>
+                        <option value="15">15 questions</option>
+                        <option value="20">20 questions</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-full">
+                    <i class="fas fa-magic"></i>
+                    Générer le quiz
+                </button>
+            </form>
+        </div>
+        
+        <div class="quiz-container" id="quizContainer" style="display: none;">
+            <div class="quiz-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <span class="progress-text" id="progressText">Question 1 sur 10</span>
+            </div>
+            
+            <div class="quiz-question" id="quizQuestion">
+                <!-- Questions will be loaded here -->
+            </div>
+            
+            <div class="quiz-actions">
+                <button class="btn btn-outline" id="prevBtn" onclick="previousQuestion()">
+                    <i class="fas fa-chevron-left"></i>
+                    Précédent
+                </button>
+                <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()">
+                    Suivant
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                <button class="btn btn-accent" id="finishBtn" onclick="finishQuiz()" style="display: none;">
+                    <i class="fas fa-check"></i>
+                    Terminer
+                </button>
+            </div>
+        </div>
+        
+        <div class="quiz-results" id="quizResults" style="display: none;">
+            <div class="results-header">
+                <h2>Résultats du quiz</h2>
+                <div class="score-circle">
+                    <span class="score-text" id="scoreText">0/10</span>
+                </div>
+            </div>
+            
+            <div class="results-details" id="resultsDetails">
+                <!-- Detailed results will be shown here -->
+            </div>
+            
+            <div class="results-actions">
+                <button class="btn btn-primary" onclick="restartQuiz()">
+                    <i class="fas fa-redo"></i>
+                    Nouveau quiz
+                </button>
+                <button class="btn btn-outline" onclick="reviewAnswers()">
+                    <i class="fas fa-eye"></i>
+                    Revoir les réponses
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.quiz-generator {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.quiz-setup {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+}
+
+.quiz-setup h2 {
+    margin-bottom: 1.5rem;
+    color: var(--dark);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.quiz-container {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+}
+
+.quiz-progress {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--gray-light);
+    border-radius: 4px;
+    margin-right: 1rem;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--gradient-primary);
+    width: 10%;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-weight: 600;
+    color: var(--gray);
+}
+
+.quiz-question {
+    margin-bottom: 2rem;
+    min-height: 200px;
+}
+
+.question-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--dark);
+}
+
+.question-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.option {
+    padding: 1rem;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.option:hover {
+    border-color: var(--primary);
+    background: var(--light);
+}
+
+.option.selected {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+}
+
+.quiz-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.quiz-results {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    text-align: center;
+}
+
+.results-header {
+    margin-bottom: 2rem;
+}
+
+.score-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 1rem auto;
+}
+
+.score-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.results-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.btn-full {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .quiz-actions {
+        flex-direction: column;
+    }
+    
+    .results-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+let currentQuestion = 0;
+let questions = [];
+let answers = [];
+let quizData = {};
+
+document.getElementById('quizForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    generateQuiz();
+});
+
+function generateQuiz() {
+    const topic = document.getElementById('topic').value;
+    const difficulty = document.getElementById('difficulty').value;
+    const questionCount = document.getElementById('questionCount').value;
+    
+    // Show loading
+    document.querySelector('.quiz-setup').style.display = 'none';
+    document.getElementById('quizContainer').style.display = 'block';
+    
+    // Simulate quiz generation (in real app, call AI API)
+    setTimeout(() => {
+        questions = generateSampleQuestions(topic, difficulty, questionCount);
+        answers = new Array(questions.length).fill(null);
+        startQuiz();
+    }, 2000);
+}
+
+function generateSampleQuestions(topic, difficulty, count) {
+    // Sample questions (in real app, this would come from AI)
+    const sampleQuestions = [
+        {
+            question: `Quelle est la définition principale de "${topic}" ?`,
+            options: [
+                "Option A - Première définition",
+                "Option B - Deuxième définition", 
+                "Option C - Troisième définition",
+                "Option D - Quatrième définition"
+            ],
+            correct: 1
+        },
+        {
+            question: `Quel est l'aspect le plus important de "${topic}" ?`,
+            options: [
+                "Aspect technique",
+                "Aspect historique",
+                "Aspect pratique", 
+                "Aspect théorique"
+            ],
+            correct: 2
+        }
+    ];
+    
+    // Repeat sample questions to match requested count
+    const result = [];
+    for (let i = 0; i < count; i++) {
+        const q = sampleQuestions[i % sampleQuestions.length];
+        result.push({
+            ...q,
+            question: q.question.replace(/Question \d+/, `Question ${i + 1}`)
+        });
+    }
+    
+    return result;
+}
+
+function startQuiz() {
+    currentQuestion = 0;
+    showQuestion();
+}
+
+function showQuestion() {
+    const question = questions[currentQuestion];
+    const questionHtml = `
+        <div class="question-title">
+            ${question.question}
+        </div>
+        <div class="question-options">
+            ${question.options.map((option, index) => `
+                <div class="option ${answers[currentQuestion] === index ? 'selected' : ''}" 
+                     onclick="selectAnswer(${index})">
+                    ${option}
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    document.getElementById('quizQuestion').innerHTML = questionHtml;
+    
+    // Update progress
+    const progress = ((currentQuestion + 1) / questions.length) * 100;
+    document.getElementById('progressFill').style.width = progress + '%';
+    document.getElementById('progressText').textContent = `Question ${currentQuestion + 1} sur ${questions.length}`;
+    
+    // Update buttons
+    document.getElementById('prevBtn').style.display = currentQuestion > 0 ? 'block' : 'none';
+    document.getElementById('nextBtn').style.display = currentQuestion < questions.length - 1 ? 'block' : 'none';
+    document.getElementById('finishBtn').style.display = currentQuestion === questions.length - 1 ? 'block' : 'none';
+}
+
+function selectAnswer(index) {
+    answers[currentQuestion] = index;
+    showQuestion(); // Refresh to show selection
+}
+
+function previousQuestion() {
+    if (currentQuestion > 0) {
+        currentQuestion--;
+        showQuestion();
+    }
+}
+
+function nextQuestion() {
+    if (currentQuestion < questions.length - 1) {
+        currentQuestion++;
+        showQuestion();
+    }
+}
+
+function finishQuiz() {
+    // Calculate score
+    let score = 0;
+    for (let i = 0; i < questions.length; i++) {
+        if (answers[i] === questions[i].correct) {
+            score++;
+        }
+    }
+    
+    // Show results
+    document.getElementById('quizContainer').style.display = 'none';
+    document.getElementById('quizResults').style.display = 'block';
+    document.getElementById('scoreText').textContent = `${score}/${questions.length}`;
+    
+    // Show detailed results
+    const resultsHtml = `
+        <div class="score-percentage">
+            Score: ${Math.round((score / questions.length) * 100)}%
+        </div>
+        <p>Vous avez répondu correctement à ${score} questions sur ${questions.length}.</p>
+    `;
+    document.getElementById('resultsDetails').innerHTML = resultsHtml;
+}
+
+function restartQuiz() {
+    document.getElementById('quizResults').style.display = 'none';
+    document.querySelector('.quiz-setup').style.display = 'block';
+    currentQuestion = 0;
+    questions = [];
+    answers = [];
+}
+
+function reviewAnswers() {
+    alert('Fonctionnalité de révision des réponses à implémenter');
+}
+</script>
+{% endblock %}

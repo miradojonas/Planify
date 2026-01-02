@@ -1,0 +1,493 @@
+{% extends "base.html" %}
+
+{% block title %}Mes Devoirs - PLANIFY{% endblock %}
+
+{% block content %}
+<div class="homework-dashboard">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-tasks"></i> Mes Devoirs</h1>
+        <div class="homework-stats">
+            <div class="stat pending-count">
+                <span class="count" id="pendingCount">{{ homework|selectattr('status', 'equalto', 'pending')|list|length }}</span>
+                <span class="label">À faire</span>
+            </div>
+            <div class="stat submitted-count">
+                <span class="count" id="submittedCount">{{ homework|selectattr('status', 'equalto', 'submitted')|list|length }}</span>
+                <span class="label">Rendus</span>
+            </div>
+            <div class="stat overdue-count">
+                <span class="count" id="overdueCount">{{ homework|selectattr('status', 'equalto', 'overdue')|list|length }}</span>
+                <span class="label">En retard</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters-section">
+        <div class="filter-buttons">
+            <button class="filter-btn active" onclick="filterHomework('all')">Tous</button>
+            <button class="filter-btn pending" onclick="filterHomework('pending')">À faire</button>
+            <button class="filter-btn submitted" onclick="filterHomework('submitted')">Rendus</button>
+            <button class="filter-btn overdue" onclick="filterHomework('overdue')">En retard</button>
+            <button class="filter-btn graded" onclick="filterHomework('graded')">Notés</button>
+        </div>
+        <div class="sort-options">
+            <select id="sortSelect" onchange="sortHomework()">
+                <option value="due_date">Trier par date limite</option>
+                <option value="subject">Trier par matière</option>
+                <option value="points">Trier par points</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Liste des devoirs -->
+    <div class="homework-grid" id="homeworkGrid">
+        {% for hw in homework %}
+        <div class="homework-card" data-status="{{ hw.status }}" data-subject="{{ hw.subject|lower }}" data-due="{{ hw.due_date }}" data-points="{{ hw.points }}">
+            <div class="homework-header">
+                <div class="homework-status status-{{ hw.status }}">
+                    {% if hw.status == 'pending' %}
+                        <i class="fas fa-clock"></i> À faire
+                    {% elif hw.status == 'submitted' %}
+                        <i class="fas fa-check"></i> Rendu
+                    {% elif hw.status == 'overdue' %}
+                        <i class="fas fa-exclamation-triangle"></i> En retard
+                    {% elif hw.status == 'graded' %}
+                        <i class="fas fa-star"></i> Noté
+                    {% endif %}
+                </div>
+                <div class="homework-points">{{ hw.points }} pts</div>
+            </div>
+            
+            <div class="homework-content">
+                <h3 class="homework-title">{{ hw.title }}</h3>
+                <div class="homework-meta">
+                    <span class="homework-subject">
+                        <i class="fas fa-book"></i> {{ hw.subject or 'Général' }}
+                    </span>
+                    <span class="homework-teacher">
+                        <i class="fas fa-user"></i> {{ hw.teacher_name }}
+                    </span>
+                </div>
+                
+                <div class="homework-due-date {% if hw.is_overdue and hw.status == 'pending' %}overdue{% endif %}">
+                    <i class="fas fa-calendar"></i>
+                    À rendre le {{ hw.due_date[:10] }} à {{ hw.due_date[11:16] }}
+                    {% if hw.is_overdue and hw.status == 'pending' %}
+                        <span class="overdue-label">EN RETARD</span>
+                    {% endif %}
+                </div>
+
+                <p class="homework-description">{{ hw.description[:150] }}{% if hw.description|length > 150 %}...{% endif %}</p>
+                
+                {% if hw.student_submission %}
+                <div class="submission-info">
+                    <div class="submission-status">
+                        <i class="fas fa-check-circle"></i>
+                        Rendu le {{ hw.student_submission.submitted_at[:10] }} à {{ hw.student_submission.submitted_at[11:16] }}
+                    </div>
+                    {% if hw.student_submission.grade %}
+                    <div class="submission-grade">
+                        <strong>Note: {{ hw.student_submission.grade }}/{{ hw.points }}</strong>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="homework-actions">
+                <a href="{{ url_for('homework_detail', homework_id=hw.id) }}" class="btn btn-primary">
+                    <i class="fas fa-eye"></i>
+                    {% if hw.student_submission %}
+                        Voir le devoir
+                    {% else %}
+                        Faire le devoir
+                    {% endif %}
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not homework %}
+    <div class="empty-state">
+        <i class="fas fa-tasks"></i>
+        <h3>Aucun devoir assigné</h3>
+        <p>Il n'y a actuellement aucun devoir à faire.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.homework-dashboard {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.dashboard-header h1 {
+    color: var(--dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.homework-stats {
+    display: flex;
+    gap: 1rem;
+}
+
+.stat {
+    text-align: center;
+    padding: 0.75rem 1rem;
+    border-radius: var(--border-radius);
+    min-width: 80px;
+}
+
+.stat .count {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.stat .label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.pending-count { background: var(--gradient-primary); }
+.submitted-count { background: linear-gradient(135deg, #28a745, #20c997); }
+.overdue-count { background: linear-gradient(135deg, #dc3545, #fd7e14); }
+
+.filters-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--gray-light);
+    background: white;
+    color: var(--gray);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.filter-btn.pending:hover,
+.filter-btn.pending.active { background: var(--primary); }
+.filter-btn.submitted:hover,
+.filter-btn.submitted.active { background: #28a745; border-color: #28a745; }
+.filter-btn.overdue:hover,
+.filter-btn.overdue.active { background: #dc3545; border-color: #dc3545; }
+.filter-btn.graded:hover,
+.filter-btn.graded.active { background: #ffc107; border-color: #ffc107; color: var(--dark); }
+
+.sort-options select {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    background: white;
+    color: var(--dark);
+    font-size: 0.875rem;
+}
+
+.homework-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.homework-card {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.homework-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.homework-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--light);
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.homework-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-pending {
+    background: rgba(74, 144, 226, 0.1);
+    color: var(--primary);
+}
+
+.status-submitted {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.status-overdue {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.status-graded {
+    background: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+}
+
+.homework-points {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 0.875rem;
+}
+
+.homework-content {
+    padding: 1.5rem;
+}
+
+.homework-title {
+    margin: 0 0 1rem 0;
+    color: var(--dark);
+    font-size: 1.125rem;
+}
+
+.homework-meta {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.homework-subject,
+.homework-teacher {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--gray);
+}
+
+.homework-due-date {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background: var(--light);
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.homework-due-date.overdue {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.overdue-label {
+    background: #dc3545;
+    color: white;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.625rem;
+    font-weight: 700;
+    margin-left: auto;
+}
+
+.homework-description {
+    color: var(--gray);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.submission-info {
+    background: rgba(40, 167, 69, 0.05);
+    padding: 0.75rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    border-left: 3px solid #28a745;
+}
+
+.submission-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #28a745;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.submission-grade {
+    color: var(--primary);
+    font-size: 0.875rem;
+}
+
+.homework-actions {
+    padding: 1rem 1.5rem;
+    background: var(--light);
+    border-top: 1px solid var(--gray-light);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--gray);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: var(--dark);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .homework-dashboard {
+        padding: 1rem;
+    }
+    
+    .dashboard-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .homework-stats {
+        justify-content: center;
+    }
+    
+    .filters-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .homework-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+function filterHomework(status) {
+    const cards = document.querySelectorAll('.homework-card');
+    const buttons = document.querySelectorAll('.filter-btn');
+    
+    // Mettre à jour les boutons
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Filtrer les cartes
+    cards.forEach(card => {
+        if (status === 'all' || card.dataset.status === status) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+function sortHomework() {
+    const grid = document.getElementById('homeworkGrid');
+    const cards = Array.from(grid.children);
+    const sortBy = document.getElementById('sortSelect').value;
+    
+    cards.sort((a, b) => {
+        let aVal, bVal;
+        
+        if (sortBy === 'due_date') {
+            aVal = new Date(a.dataset.due);
+            bVal = new Date(b.dataset.due);
+        } else if (sortBy === 'subject') {
+            aVal = a.dataset.subject;
+            bVal = b.dataset.subject;
+        } else if (sortBy === 'points') {
+            aVal = parseInt(a.dataset.points);
+            bVal = parseInt(b.dataset.points);
+            return bVal - aVal; // Ordre décroissant pour les points
+        }
+        
+        return aVal > bVal ? 1 : -1;
+    });
+    
+    // Réorganiser les éléments
+    cards.forEach(card => grid.appendChild(card));
+}
+
+// Animation au chargement
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.homework-card');
+    cards.forEach((card, index) => {
+        card.style.animation = `slideInUp 0.3s ease-out ${index * 0.1}s both`;
+    });
+});
+
+// Animations CSS
+const style = document.createElement('style');
+style.textContent = `
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

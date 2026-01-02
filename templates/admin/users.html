@@ -1,0 +1,862 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des Comptes - PLANIFY{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-users-cog"></i> Gestion des Comptes</h1>
+        <button class="btn btn-primary" onclick="openCreateUserModal()">
+            <i class="fas fa-plus"></i> Nouveau Utilisateur
+        </button>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon admin">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="adminCount">{{ users|selectattr('role', 'equalto', 'admin')|list|length }}</h3>
+                <p>Administrateurs</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon teacher">
+                <i class="fas fa-chalkboard-teacher"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="teacherCount">{{ users|selectattr('role', 'equalto', 'professeur')|list|length }}</h3>
+                <p>Professeurs</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon student">
+                <i class="fas fa-user-graduate"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="studentCount">{{ users|selectattr('role', 'equalto', 'eleve')|list|length }}</h3>
+                <p>Élèves</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon total">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="totalCount">{{ users|length }}</h3>
+                <p>Total</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres et recherche -->
+    <div class="filters-section">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Rechercher par nom, prénom ou email..." onkeyup="filterUsers()">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="filter-buttons">
+            <button class="filter-btn active" onclick="filterByRole('all')">Tous</button>
+            <button class="filter-btn" onclick="filterByRole('admin')">Admins</button>
+            <button class="filter-btn" onclick="filterByRole('professeur')">Professeurs</button>
+            <button class="filter-btn" onclick="filterByRole('eleve')">Élèves</button>
+        </div>
+    </div>
+
+    <!-- Table des utilisateurs -->
+    <div class="card">
+        <div class="users-table-container">
+            <table class="users-table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Nom & Prénom</th>
+                        <th>Email</th>
+                        <th>Rôle</th>
+                        <th>Statut</th>
+                        <th>Inscription</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    {% for user in users %}
+                    <tr data-role="{{ user.role }}" data-search="{{ user.nom|lower }} {{ user.prenom|lower }} {{ user.email|lower }}">
+                        <td>
+                            <div class="user-avatar-small">{{ user.get_initials() }}</div>
+                        </td>
+                        <td>
+                            <div class="user-name">
+                                <strong>{{ user.prenom }} {{ user.nom }}</strong>
+                            </div>
+                        </td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <span class="role-badge role-{{ user.role }}">
+                                {% if user.role == 'admin' %}
+                                    <i class="fas fa-user-shield"></i> Admin
+                                {% elif user.role == 'professeur' %}
+                                    <i class="fas fa-chalkboard-teacher"></i> Professeur
+                                {% else %}
+                                    <i class="fas fa-user-graduate"></i> Élève
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge {% if user.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                {% if user.is_active %}
+                                    <i class="fas fa-check-circle"></i> Actif
+                                {% else %}
+                                    <i class="fas fa-times-circle"></i> Inactif
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>{{ user.created_at.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-icon btn-edit" onclick="editUser({{ user.id }})" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                {% if user.id != current_user.id %}
+                                <button class="btn-icon btn-delete" onclick="deleteUser({{ user.id }}, '{{ user.prenom }} {{ user.nom }}')" title="Supprimer">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Créer Utilisateur -->
+<div class="modal" id="createUserModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-plus"></i> Créer un Utilisateur</h3>
+            <button class="modal-close" onclick="closeCreateUserModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="createUserForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="createNom">Nom *</label>
+                        <input type="text" id="createNom" name="nom" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="createPrenom">Prénom *</label>
+                        <input type="text" id="createPrenom" name="prenom" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="createEmail">Email *</label>
+                    <input type="email" id="createEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="createRole">Rôle *</label>
+                    <select id="createRole" name="role" required>
+                        <option value="">Sélectionnez un rôle</option>
+                        <option value="admin">Administrateur</option>
+                        <option value="professeur">Professeur</option>
+                        <option value="eleve">Élève</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="createPassword">Mot de passe *</label>
+                    <input type="password" id="createPassword" name="password" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateUserModal()">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Créer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifier Utilisateur -->
+<div class="modal" id="editUserModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-edit"></i> Modifier l'Utilisateur</h3>
+            <button class="modal-close" onclick="closeEditUserModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId" name="id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="editNom">Nom *</label>
+                        <input type="text" id="editNom" name="nom" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPrenom">Prénom *</label>
+                        <input type="text" id="editPrenom" name="prenom" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="editEmail">Email *</label>
+                    <input type="email" id="editEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="editRole">Rôle *</label>
+                    <select id="editRole" name="role" required>
+                        <option value="admin">Administrateur</option>
+                        <option value="professeur">Professeur</option>
+                        <option value="eleve">Élève</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editPassword">Nouveau mot de passe (laisser vide pour ne pas changer)</label>
+                    <input type="password" id="editPassword" name="password">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="editIsActive" name="is_active">
+                        <span class="checkmark"></span>
+                        Compte actif
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Mettre à jour
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-dashboard {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+    color: var(--dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Statistiques */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.stat-icon.admin { background: var(--gradient-primary); }
+.stat-icon.teacher { background: linear-gradient(135deg, #28a745, #20c997); }
+.stat-icon.student { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+.stat-icon.total { background: linear-gradient(135deg, #6f42c1, #e83e8c); }
+
+.stat-info h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--dark);
+}
+
+.stat-info p {
+    margin: 0;
+    color: var(--gray);
+    font-weight: 500;
+}
+
+/* Filtres */
+.filters-section {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.search-bar {
+    position: relative;
+    flex: 1;
+    min-width: 300px;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 0.75rem 3rem 0.75rem 1rem;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius-lg);
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.search-bar input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.search-bar i {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray);
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.filter-btn {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--gray-light);
+    background: white;
+    color: var(--gray);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Table */
+.users-table-container {
+    overflow-x: auto;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.users-table th,
+.users-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.users-table th {
+    background: var(--light);
+    font-weight: 600;
+    color: var(--dark);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.users-table tr:hover {
+    background: var(--light);
+}
+
+.user-avatar-small {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.role-admin {
+    background: rgba(74, 144, 226, 0.1);
+    color: var(--primary);
+}
+
+.role-professeur {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.role-eleve {
+    background: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-active {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.status-inactive {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+}
+
+.btn-edit {
+    background: rgba(74, 144, 226, 0.1);
+    color: var(--primary);
+}
+
+.btn-edit:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-delete {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.btn-delete:hover {
+    background: #dc3545;
+    color: white;
+}
+
+/* Modales */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: var(--shadow-lg);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.modal-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--gray);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+    background: var(--gray-light);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 500 !important;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gray-light);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-dashboard {
+        padding: 1rem;
+    }
+    
+    .dashboard-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .filters-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-bar {
+        min-width: auto;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+let allUsers = [];
+
+// Charger tous les utilisateurs
+function loadUsers() {
+    fetch('/api/admin/users')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            allUsers = data.users;
+            updateStats();
+        }
+    })
+    .catch(error => console.error('Erreur:', error));
+}
+
+// Mettre à jour les statistiques
+function updateStats() {
+    const adminCount = allUsers.filter(u => u.role === 'admin').length;
+    const teacherCount = allUsers.filter(u => u.role === 'professeur').length;
+    const studentCount = allUsers.filter(u => u.role === 'eleve').length;
+    
+    document.getElementById('adminCount').textContent = adminCount;
+    document.getElementById('teacherCount').textContent = teacherCount;
+    document.getElementById('studentCount').textContent = studentCount;
+    document.getElementById('totalCount').textContent = allUsers.length;
+}
+
+// Filtrer par rôle
+function filterByRole(role) {
+    const rows = document.querySelectorAll('#usersTable tbody tr');
+    const buttons = document.querySelectorAll('.filter-btn');
+    
+    // Mettre à jour les boutons
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Filtrer les lignes
+    rows.forEach(row => {
+        if (role === 'all' || row.dataset.role === role) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Recherche
+function filterUsers() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#usersTable tbody tr');
+    
+    rows.forEach(row => {
+        const searchData = row.dataset.search;
+        if (searchData.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Modales
+function openCreateUserModal() {
+    document.getElementById('createUserModal').style.display = 'flex';
+}
+
+function closeCreateUserModal() {
+    document.getElementById('createUserModal').style.display = 'none';
+    document.getElementById('createUserForm').reset();
+}
+
+function openEditUserModal() {
+    document.getElementById('editUserModal').style.display = 'flex';
+}
+
+function closeEditUserModal() {
+    document.getElementById('editUserModal').style.display = 'none';
+    document.getElementById('editUserForm').reset();
+}
+
+// Créer utilisateur
+document.getElementById('createUserForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    fetch('/api/admin/users/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Utilisateur créé avec succès!');
+            location.reload();
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la création');
+    });
+});
+
+// Modifier utilisateur
+function editUser(userId) {
+    const user = allUsers.find(u => u.id === userId);
+    if (!user) {
+        // Chercher dans le DOM
+        const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+        if (row) {
+            document.getElementById('editUserId').value = userId;
+            // Remplir les champs depuis le DOM
+            const cells = row.querySelectorAll('td');
+            const nameCell = cells[1].textContent.trim().split(' ');
+            document.getElementById('editPrenom').value = nameCell[0];
+            document.getElementById('editNom').value = nameCell.slice(1).join(' ');
+            document.getElementById('editEmail').value = cells[2].textContent;
+            
+            // Déterminer le rôle depuis le badge
+            const roleBadge = cells[3].querySelector('.role-badge');
+            if (roleBadge.classList.contains('role-admin')) {
+                document.getElementById('editRole').value = 'admin';
+            } else if (roleBadge.classList.contains('role-professeur')) {
+                document.getElementById('editRole').value = 'professeur';
+            } else {
+                document.getElementById('editRole').value = 'eleve';
+            }
+            
+            // Statut actif
+            const statusBadge = cells[4].querySelector('.status-badge');
+            document.getElementById('editIsActive').checked = statusBadge.classList.contains('status-active');
+            
+            openEditUserModal();
+        }
+        return;
+    }
+    
+    // Remplir le formulaire
+    document.getElementById('editUserId').value = user.id;
+    document.getElementById('editNom').value = user.nom;
+    document.getElementById('editPrenom').value = user.prenom;
+    document.getElementById('editEmail').value = user.email;
+    document.getElementById('editRole').value = user.role;
+    document.getElementById('editIsActive').checked = user.is_active;
+    
+    openEditUserModal();
+}
+
+// Soumettre modification
+document.getElementById('editUserForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    data.is_active = document.getElementById('editIsActive').checked;
+    
+    const userId = data.id;
+    delete data.id;
+    
+    fetch(`/api/admin/users/${userId}/update`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Utilisateur mis à jour avec succès!');
+            location.reload();
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la mise à jour');
+    });
+});
+
+// Supprimer utilisateur
+function deleteUser(userId, userName) {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${userName}" ?\n\nCette action est irréversible.`)) {
+        fetch(`/api/admin/users/${userId}/delete`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('Utilisateur supprimé avec succès!');
+                location.reload();
+            } else {
+                alert('Erreur: ' + result.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la suppression');
+        });
+    }
+}
+
+// Charger les données au démarrage
+document.addEventListener('DOMContentLoaded', function() {
+    loadUsers();
+});
+</script>
+{% endblock %}

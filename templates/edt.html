@@ -1,0 +1,1184 @@
+{% extends "base.html" %}
+
+{% block title %}Emploi du Temps - PLANIFY{% endblock %}
+
+
+
+{% block content %}
+<script>
+// Données pour le JavaScript
+const scheduleData = {{ schedule_json|tojson }};
+const classroomsData = {{ classrooms_json|tojson }};
+const currentUserRole = '{{ current_user.role }}';
+const currentUserId = {{ current_user.id }};
+</script>
+
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">
+            <i class="fas fa-table"></i>
+            {% if current_user.role in ['admin', 'professeur'] %}
+                Gestion Emploi du Temps - Administrateur
+            {% elif current_user.role == 'professeur' %}
+                Mon Emploi du Temps - Professeur
+            {% else %}
+                Mon Emploi du Temps - Élève
+            {% endif %}
+        </h1>
+        <div class="header-actions">
+            {% if current_user.role in ['admin', 'professeur'] %}
+                <button class="btn btn-outline" onclick="openClassroomModal()">
+                    <i class="fas fa-door-open"></i>
+                    Gérer les salles
+                </button>
+                <button class="btn btn-primary" onclick="openCourseModal()">
+                    <i class="fas fa-plus"></i>
+                    Nouveau cours
+                </button>
+            {% endif %}
+            <button class="btn btn-outline" onclick="exportEDT()">
+                <i class="fas fa-download"></i>
+                Exporter PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Grille de l'emploi du temps -->
+    <div class="schedule-container">
+        <table class="schedule-table">
+            <thead>
+                <tr>
+                    <th class="time-header">Horaires</th>
+                    <th class="day-header">Lundi</th>
+                    <th class="day-header">Mardi</th>
+                    <th class="day-header">Mercredi</th>
+                    <th class="day-header">Jeudi</th>
+                    <th class="day-header">Vendredi</th>
+                    <th class="day-header">Samedi</th>
+                    <th class="day-header">Dimanche</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="time-slot">07:00 - 08:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="07:00-08:00">
+                        {% if current_user.role in ['admin', 'professeur'] %}
+                        <div class="empty-slot" onclick="openCourseModal('Lundi', '07:00-08:00')">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="07:00-08:00">
+                        {% if current_user.role in ['admin', 'professeur'] %}
+                        <div class="empty-slot" onclick="openCourseModal('Mardi', '07:00-08:00')">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="07:00-08:00">
+                        {% if current_user.role in ['admin', 'professeur'] %}
+                        <div class="empty-slot" onclick="openCourseModal('Mercredi', '07:00-08:00')">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="07:00-08:00">
+                        {% if current_user.role in ['admin', 'professeur'] %}
+                        <div class="empty-slot" onclick="openCourseModal('Jeudi', '07:00-08:00')">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="07:00-08:00">
+                        {% if current_user.role in ['admin', 'professeur'] %}
+                        <div class="empty-slot" onclick="openCourseModal('Vendredi', '07:00-08:00')">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="07:00-08:00">
+                        {% if current_user.role in ['admin', 'professeur'] %}
+                        <div class="empty-slot" onclick="openCourseModal('Samedi', '07:00-08:00')">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="07:00-08:00">
+                        {% if current_user.role in ['admin', 'professeur'] %}
+                        <div class="empty-slot" onclick="openCourseModal('Dimanche', '07:00-08:00')">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                <!-- Heures de 8h à 19h -->
+                <tr>
+                    <td class="time-slot">08:00 - 09:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="08:00-09:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '08:00-09:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="08:00-09:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '08:00-09:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="08:00-09:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '08:00-09:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="08:00-09:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '08:00-09:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="08:00-09:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '08:00-09:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="08:00-09:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '08:00-09:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="08:00-09:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '08:00-09:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="time-slot">09:00 - 10:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="09:00-10:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '09:00-10:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="09:00-10:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '09:00-10:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="09:00-10:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '09:00-10:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="09:00-10:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '09:00-10:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="09:00-10:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '09:00-10:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="09:00-10:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '09:00-10:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="09:00-10:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '09:00-10:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="time-slot">10:00 - 11:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="10:00-11:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '10:00-11:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="10:00-11:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '10:00-11:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="10:00-11:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '10:00-11:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="10:00-11:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '10:00-11:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="10:00-11:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '10:00-11:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="10:00-11:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '10:00-11:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="10:00-11:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '10:00-11:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="time-slot">11:00 - 12:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="11:00-12:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '11:00-12:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="11:00-12:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '11:00-12:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="11:00-12:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '11:00-12:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="11:00-12:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '11:00-12:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="11:00-12:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '11:00-12:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="11:00-12:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '11:00-12:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="11:00-12:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '11:00-12:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="time-slot">12:00 - 13:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="12:00-13:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '12:00-13:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="12:00-13:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '12:00-13:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="12:00-13:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '12:00-13:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="12:00-13:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '12:00-13:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="12:00-13:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '12:00-13:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="12:00-13:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '12:00-13:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="12:00-13:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '12:00-13:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="time-slot">13:00 - 14:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="13:00-14:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '13:00-14:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="13:00-14:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '13:00-14:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="13:00-14:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '13:00-14:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="13:00-14:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '13:00-14:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="13:00-14:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '13:00-14:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="13:00-14:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '13:00-14:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="13:00-14:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '13:00-14:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="time-slot">14:00 - 15:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="14:00-15:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '14:00-15:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="14:00-15:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '14:00-15:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="14:00-15:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '14:00-15:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="14:00-15:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '14:00-15:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="14:00-15:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '14:00-15:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="14:00-15:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '14:00-15:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="14:00-15:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '14:00-15:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="time-slot">15:00 - 16:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="15:00-16:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '15:00-16:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="15:00-16:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '15:00-16:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="15:00-16:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '15:00-16:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="15:00-16:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '15:00-16:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="15:00-16:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '15:00-16:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="15:00-16:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '15:00-16:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="15:00-16:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '15:00-16:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="time-slot">16:00 - 17:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="16:00-17:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '16:00-17:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="16:00-17:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '16:00-17:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="16:00-17:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '16:00-17:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="16:00-17:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '16:00-17:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="16:00-17:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '16:00-17:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="16:00-17:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '16:00-17:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="16:00-17:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '16:00-17:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="time-slot">17:00 - 18:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="17:00-18:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '17:00-18:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="17:00-18:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '17:00-18:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="17:00-18:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '17:00-18:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="17:00-18:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '17:00-18:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="17:00-18:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '17:00-18:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="17:00-18:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '17:00-18:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="17:00-18:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '17:00-18:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+                <tr>
+                    <td class="time-slot">18:00 - 19:00</td>
+                    <td class="schedule-cell" data-day="Lundi" data-slot="18:00-19:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Lundi', '18:00-19:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mardi" data-slot="18:00-19:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mardi', '18:00-19:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Mercredi" data-slot="18:00-19:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Mercredi', '18:00-19:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Jeudi" data-slot="18:00-19:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Jeudi', '18:00-19:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Vendredi" data-slot="18:00-19:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Vendredi', '18:00-19:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Samedi" data-slot="18:00-19:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Samedi', '18:00-19:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                    <td class="schedule-cell" data-day="Dimanche" data-slot="18:00-19:00">{% if current_user.role in ['admin', 'professeur'] %}<div class="empty-slot" onclick="openCourseModal('Dimanche', '18:00-19:00')"><i class="fas fa-plus"></i></div>{% endif %}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal pour créer/modifier un cours (Admin et Professeur) -->
+{% if current_user.role in ['admin', 'professeur'] %}
+<div id="courseModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Nouveau Cours</h3>
+            <button class="modal-close" onclick="closeCourseModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="courseForm">
+                <div class="form-group">
+                    <label for="courseName">Nom du cours</label>
+                    <input type="text" id="courseName" required>
+                </div>
+                <div class="form-group">
+                    <label for="courseDay">Jour</label>
+                    <select id="courseDay" required>
+                        <option value="">Sélectionner un jour</option>
+                        <option value="0">Lundi</option>
+                        <option value="1">Mardi</option>
+                        <option value="2">Mercredi</option>
+                        <option value="3">Jeudi</option>
+                        <option value="4">Vendredi</option>
+                        <option value="5">Samedi</option>
+                        <option value="6">Dimanche</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="courseTime">Horaire</label>
+                    <select id="courseTime" required>
+                        <option value="">Sélectionner un horaire</option>
+                        <option value="07:00-08:00">07:00 - 08:00</option>
+                        <option value="08:00-09:00">08:00 - 09:00</option>
+                        <option value="09:00-10:00">09:00 - 10:00</option>
+                        <option value="10:00-11:00">10:00 - 11:00</option>
+                        <option value="11:00-12:00">11:00 - 12:00</option>
+                        <option value="12:00-13:00">12:00 - 13:00</option>
+                        <option value="13:00-14:00">13:00 - 14:00</option>
+                        <option value="14:00-15:00">14:00 - 15:00</option>
+                        <option value="15:00-16:00">15:00 - 16:00</option>
+                        <option value="16:00-17:00">16:00 - 17:00</option>
+                        <option value="17:00-18:00">17:00 - 18:00</option>
+                        <option value="18:00-19:00">18:00 - 19:00</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="courseClassroom">Salle</label>
+                    <select id="courseClassroom" required>
+                        <option value="">Sélectionner une salle</option>
+                        {% for classroom in classrooms %}
+                        <option value="{{ classroom.id }}">{{ classroom.name }} ({{ classroom.capacity }} places)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="courseColor">Couleur</label>
+                    <input type="color" id="courseColor" value="#6366f1">
+                </div>
+                <div class="form-group">
+                    <label for="courseDescription">Description</label>
+                    <textarea id="courseDescription" rows="3"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeCourseModal()">Annuler</button>
+            <button class="btn btn-primary" onclick="saveCourse()">Enregistrer</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal Gestion des Salles -->
+{% if current_user.role in ['admin', 'professeur'] %}
+<div id="classroomModal" class="modal" style="display: none;">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h3>Gestion des Salles</h3>
+            <button class="modal-close" onclick="closeClassroomModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="classroom-management">
+                <div class="add-classroom-section">
+                    <h4>Ajouter une nouvelle salle</h4>
+                    <form id="classroomForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="classroomName">Nom de la salle</label>
+                                <input type="text" id="classroomName" class="form-control" placeholder="Ex: Salle 201" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="classroomCapacity">Capacité</label>
+                                <input type="number" id="classroomCapacity" class="form-control" placeholder="30" min="1" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="classroomEquipment">Équipements</label>
+                            <input type="text" id="classroomEquipment" class="form-control" placeholder="Projecteur, Tableaux interactifs...">
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="addClassroom()">
+                            <i class="fas fa-plus"></i>
+                            Ajouter la salle
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="existing-classrooms-section">
+                    <h4>Salles existantes</h4>
+                    <div class="classrooms-list" id="classroomsList">
+                        {% for classroom in classrooms %}
+                        <div class="classroom-item" data-id="{{ classroom.id }}">
+                            <div class="classroom-info">
+                                <h5>{{ classroom.name }}</h5>
+                                <p><i class="fas fa-users"></i> {{ classroom.capacity }} places</p>
+                                <p><i class="fas fa-tools"></i> {{ classroom.equipment or 'Aucun équipement spécifié' }}</p>
+                            </div>
+                            <div class="classroom-actions">
+                                <button class="btn btn-sm btn-outline" onclick="editClassroom({{ classroom.id }}, '{{ classroom.name }}', {{ classroom.capacity }}, '{{ classroom.equipment or '' }}')">
+                                    <i class="fas fa-edit"></i>
+                                    Modifier
+                                </button>
+                                {% if current_user.role == 'admin' %}
+                                <button class="btn btn-sm btn-danger" onclick="deleteClassroom({{ classroom.id }})">
+                                    <i class="fas fa-trash"></i>
+                                    Supprimer
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeClassroomModal()">Fermer</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal détails du cours -->
+<div id="courseDetailsModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="courseDetailsTitle">Détails du cours</h3>
+            <button class="modal-close" onclick="closeCourseDetailsModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="courseDetailsBody">
+            <!-- Contenu généré par JavaScript -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeCourseDetailsModal()">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.schedule-container {
+    padding: 1.5rem;
+    overflow-x: auto;
+}
+
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.schedule-table th,
+.schedule-table td {
+    border: 1px solid var(--gray-light);
+    text-align: center;
+    vertical-align: middle;
+}
+
+.time-header,
+.day-header {
+    background: var(--gradient-primary);
+    color: white;
+    font-weight: 600;
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.time-header {
+    background: var(--dark);
+    min-width: 120px;
+}
+
+.time-slot {
+    background: var(--light);
+    font-weight: 600;
+    color: var(--dark);
+    padding: 1rem 0.5rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+.schedule-cell {
+    padding: 0.5rem;
+    min-height: 60px;
+    height: 60px;
+    position: relative;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.schedule-cell:hover {
+    background: var(--light);
+}
+
+.empty-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    cursor: pointer;
+    color: var(--gray);
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.empty-slot:hover {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.05);
+}
+
+.empty-slot i {
+    font-size: 1.2rem;
+}
+
+.course-block {
+    background: var(--gradient-primary);
+    color: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.course-block:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.course-name {
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+    margin-bottom: 0.25rem;
+    color: var(--dark);
+    line-height: 1.2;
+}
+
+.course-details {
+    font-size: 0.7rem;
+    opacity: 0.8;
+    color: var(--dark);
+    line-height: 1.2;
+}
+
+.course-details div {
+    margin-bottom: 0.1rem;
+}
+
+.courses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.course-card {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    border-left: 4px solid;
+    display: flex;
+    flex-direction: column;
+    height: fit-content;
+}
+
+.course-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.course-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--dark);
+    flex: 1;
+}
+
+.course-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-left: 1rem;
+    flex-shrink: 0;
+}
+
+.course-schedule {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.schedule-badge {
+    background: var(--gradient-accent);
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.course-info {
+    color: var(--gray);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+    flex: 1;
+}
+
+.course-info p {
+    margin: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.course-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .edt-grid {
+        grid-template-columns: 80px repeat(6, 1fr);
+        font-size: 0.75rem;
+    }
+    
+    .courses-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .edt-navigation {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .edt-filters {
+        flex-direction: column;
+    }
+    
+    .edt-filter {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .edt-grid {
+        grid-template-columns: 60px repeat(6, 1fr);
+        font-size: 0.7rem;
+    }
+    
+    .edt-cell {
+        padding: 0.25rem;
+        min-height: 80px;
+    }
+    
+    .course-slot {
+        padding: 0.3rem;
+        font-size: 0.7rem;
+    }
+    
+    .courses-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.empty-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+</style>
+
+<script>
+// Variables globales
+let selectedDay = null;
+let selectedSlot = null;
+
+// Fonction pour ouvrir le modal de création de cours (Admin)
+function openCourseModal(dayName = null, timeSlot = null) {
+    if (currentUserRole !== 'admin' && currentUserRole !== 'professeur') return;
+    
+    const modal = document.getElementById('courseModal');
+    modal.style.display = 'flex';
+    
+    // Pré-remplir les champs si un créneau spécifique est sélectionné
+    if (dayName && timeSlot) {
+        const dayIndex = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].indexOf(dayName);
+        if (dayIndex !== -1) {
+            document.getElementById('courseDay').value = dayIndex;
+        }
+        document.getElementById('courseTime').value = timeSlot;
+    }
+}
+
+// Fonction pour fermer le modal de création
+function closeCourseModal() {
+    const modal = document.getElementById('courseModal');
+    modal.style.display = 'none';
+    document.getElementById('courseForm').reset();
+}
+
+
+
+// Fonction pour sauvegarder un cours
+function saveCourse() {
+    const courseData = {
+        name: document.getElementById('courseName').value,
+        teacher_id: currentUserId, // Utiliser l'ID de l'utilisateur connecté comme professeur
+        classroom_id: document.getElementById('courseClassroom').value,
+        color: document.getElementById('courseColor').value,
+        description: document.getElementById('courseDescription').value || '',
+        day: document.getElementById('courseDay').value,
+        slot: document.getElementById('courseTime').value
+    };
+    
+    // Validation
+    if (!courseData.name || !courseData.classroom_id || !courseData.day || !courseData.slot) {
+        alert('Veuillez remplir tous les champs obligatoires');
+        return;
+    }
+    
+    // Envoyer au serveur
+    fetch('/api/courses/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(courseData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Cours créé avec succès !');
+            closeCourseModal();
+            // Recharger la page pour voir les changements
+            window.location.reload();
+        } else {
+            alert('Erreur lors de la création du cours');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la création du cours');
+    });
+}
+
+// Fonction pour afficher les détails d'un cours
+function showCourseDetails(courseId) {
+    const modal = document.getElementById('courseDetailsModal');
+    const title = document.getElementById('courseDetailsTitle');
+    const body = document.getElementById('courseDetailsBody');
+    
+    // Trouver le cours dans les données
+    let course = null;
+    Object.values(scheduleData).forEach(day => {
+        Object.values(day).forEach(slot => {
+            slot.forEach(c => {
+                if (c.id === courseId) {
+                    course = c;
+                }
+            });
+        });
+    });
+    
+    if (!course) {
+        alert('Cours non trouvé');
+        return;
+    }
+    
+    title.textContent = course.name;
+    
+    let detailsHtml = `
+        <div class="course-detail-item">
+            <i class="fas fa-user"></i>
+            <strong>Professeur:</strong> ${course.teacher}
+        </div>
+        <div class="course-detail-item">
+            <i class="fas fa-door-open"></i>
+            <strong>Salle:</strong> ${course.classroom}
+        </div>
+        <div class="course-detail-item">
+            <i class="fas fa-palette"></i>
+            <strong>Couleur:</strong> 
+            <span class="color-preview" style="background-color: ${course.color}"></span>
+            ${course.color}
+        </div>
+    `;
+    
+    // Ajouter des détails spécifiques selon le rôle
+    if (currentUserRole === 'eleve') {
+        detailsHtml += `
+            <div class="course-detail-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <strong>Comment s'y rendre:</strong>
+                <p>La salle ${course.classroom} se trouve au niveau X, couloir Y. Équipements disponibles.</p>
+            </div>
+        `;
+    }
+    
+    body.innerHTML = detailsHtml;
+    modal.style.display = 'flex';
+}
+
+// Fonction pour fermer le modal des détails
+function closeCourseDetailsModal() {
+    const modal = document.getElementById('courseDetailsModal');
+    modal.style.display = 'none';
+}
+
+// Fonction d'export PDF
+function exportEDT() {
+    alert('Fonctionnalité d\'export PDF en cours de développement');
+}
+
+// Fermer les modals en cliquant à l'extérieur
+window.onclick = function(event) {
+    const courseModal = document.getElementById('courseModal');
+    const detailsModal = document.getElementById('courseDetailsModal');
+    
+    if (event.target === courseModal) {
+        closeCourseModal();
+    }
+    if (event.target === detailsModal) {
+        closeCourseDetailsModal();
+    }
+}
+
+// Styles CSS additionnels pour les détails
+const additionalStyles = `
+    .course-detail-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background: var(--light);
+        border-radius: var(--border-radius);
+    }
+    
+    .course-detail-item i {
+        color: var(--primary);
+        width: 20px;
+        text-align: center;
+    }
+    
+    .color-preview {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        margin: 0 0.5rem;
+        border: 2px solid var(--gray-light);
+    }
+    
+    /* Styles pour la gestion des salles */
+    .large-modal .modal-content {
+        max-width: 800px;
+        width: 90%;
+    }
+    
+    .classroom-management {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+    
+    .add-classroom-section {
+        padding: 1.5rem;
+        background: var(--light);
+        border-radius: var(--border-radius);
+        border: 2px dashed var(--gray-light);
+    }
+    
+    .existing-classrooms-section h4 {
+        margin-bottom: 1rem;
+        color: var(--dark);
+    }
+    
+    .classrooms-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .classroom-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        border-left: 4px solid var(--primary);
+    }
+    
+    .classroom-info h5 {
+        margin: 0 0 0.5rem 0;
+        color: var(--dark);
+        font-size: 1.1rem;
+    }
+    
+    .classroom-info p {
+        margin: 0.25rem 0;
+        color: var(--gray);
+        font-size: 0.875rem;
+    }
+    
+    .classroom-info i {
+        color: var(--primary);
+        width: 16px;
+        text-align: center;
+        margin-right: 0.5rem;
+    }
+    
+    .classroom-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--dark);
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid var(--gray-light);
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+    
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    
+    .btn-danger {
+        background: var(--danger);
+        color: white;
+        border: 2px solid var(--danger);
+    }
+    
+    .btn-danger:hover {
+        background: #dc2626;
+        border-color: #dc2626;
+    }
+    
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: var(--border-radius-lg);
+        width: 90%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--gray-light);
+    }
+
+    .modal-header h3 {
+        margin: 0;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--gray);
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        padding: 1.5rem;
+        border-top: 1px solid var(--gray-light);
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+    
+
+    
+
+
+
+`;
+
+// Ajouter les styles à la page
+const styleSheet = document.createElement('style');
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);
+
+// Fonctions pour la gestion des salles
+function openClassroomModal() {
+    document.getElementById('classroomModal').style.display = 'flex';
+}
+
+function closeClassroomModal() {
+    document.getElementById('classroomModal').style.display = 'none';
+    clearClassroomForm();
+}
+
+function clearClassroomForm() {
+    document.getElementById('classroomForm').reset();
+}
+
+function addClassroom() {
+    const name = document.getElementById('classroomName').value;
+    const capacity = document.getElementById('classroomCapacity').value;
+    const equipment = document.getElementById('classroomEquipment').value;
+    
+    if (!name || !capacity) {
+        alert('Veuillez remplir tous les champs obligatoires');
+        return;
+    }
+    
+    fetch('/api/classrooms', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            capacity: parseInt(capacity),
+            equipment: equipment
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload(); // Recharger pour voir la nouvelle salle
+        } else {
+            alert('Erreur lors de la création de la salle: ' + (data.message || 'Erreur inconnue'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la création de la salle');
+    });
+}
+
+function editClassroom(id, name, capacity, equipment) {
+    // Remplir le formulaire avec les données existantes
+    document.getElementById('classroomName').value = name;
+    document.getElementById('classroomCapacity').value = capacity;
+    document.getElementById('classroomEquipment').value = equipment || '';
+    
+    // Changer le bouton pour modification
+    const button = document.querySelector('#classroomForm button');
+    button.innerHTML = '<i class="fas fa-save"></i> Modifier la salle';
+    button.onclick = () => updateClassroom(id);
+}
+
+function updateClassroom(id) {
+    const name = document.getElementById('classroomName').value;
+    const capacity = document.getElementById('classroomCapacity').value;
+    const equipment = document.getElementById('classroomEquipment').value;
+    
+    if (!name || !capacity) {
+        alert('Veuillez remplir tous les champs obligatoires');
+        return;
+    }
+    
+    fetch(`/api/classrooms/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            capacity: parseInt(capacity),
+            equipment: equipment
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload(); // Recharger pour voir les modifications
+        } else {
+            alert('Erreur lors de la modification de la salle: ' + (data.message || 'Erreur inconnue'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur lors de la modification de la salle');
+    });
+}
+
+function deleteClassroom(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette salle ? Cette action est irréversible.')) {
+        fetch(`/api/classrooms/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); // Recharger pour voir les changements
+            } else {
+                alert('Erreur lors de la suppression de la salle: ' + (data.message || 'Erreur inconnue'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur lors de la suppression de la salle');
+        });
+    }
+}
+
+// Fermer les modals en cliquant à l'extérieur
+window.onclick = function(event) {
+    const modals = ['courseModal', 'classroomModal', 'courseDetailsModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+
+console.log('EDT System initialized for role:', currentUserRole);
+// Injecter les cours dans la grille HTML (pour la version table statique)
+function renderCoursesToTable() {
+    if (typeof scheduleData === 'undefined') return;
+    Object.keys(scheduleData).forEach(day => {
+        const slots = scheduleData[day] || {};
+        Object.keys(slots).forEach(slot => {
+            const courses = slots[slot] || [];
+            const cell = document.querySelector(`.schedule-cell[data-day="${day}"][data-slot="${slot}"]`);
+            if (!cell) return;
+            // Vider le contenu (mais conserver le empty-slot pour admins si présent)
+            const empty = cell.querySelector('.empty-slot');
+            cell.innerHTML = '';
+            if (empty && (currentUserRole === 'admin' || currentUserRole === 'professeur')) {
+                // remettre le bouton d'ajout si l'utilisateur peut ajouter
+                const wrapper = document.createElement('div');
+                wrapper.appendChild(empty);
+                cell.appendChild(wrapper);
+            }
+
+            courses.forEach(course => {
+                const block = document.createElement('div');
+                block.className = 'course-block';
+                // couleur: supporte hex ou fallback
+                const color = course.color || '#6366f1';
+                block.style.background = color;
+                block.innerHTML = `
+                    <div class="course-name">${course.name}</div>
+                    <div class="course-details">
+                        <div>${course.teacher || ''}</div>
+                        <div>${course.classroom || ''}</div>
+                    </div>
+                `;
+                block.onclick = function() { showCourseDetails(course.id); };
+                cell.appendChild(block);
+            });
+        });
+    });
+}
+
+// Appel immédiat pour afficher les matières
+try { renderCoursesToTable(); } catch (e) { console.error('Render EDT table failed', e); }
+</script>
+{% endblock %}

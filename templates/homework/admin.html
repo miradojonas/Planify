@@ -1,0 +1,606 @@
+{% extends "base.html" %}
+
+{% block title %}Vue d'ensemble des Devoirs - PLANIFY{% endblock %}
+
+{% block content %}
+<div class="admin-homework-dashboard">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-chart-line"></i> Vue d'ensemble des Devoirs</h1>
+        <div class="header-stats">
+            <div class="stat-mini">
+                <span class="number">{{ homework|length }}</span>
+                <span class="label">Devoirs créés</span>
+            </div>
+            <div class="stat-mini">
+                <span class="number">{{ homework|map(attribute='submission_count')|sum }}</span>
+                <span class="label">Soumissions</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters-section">
+        <div class="filter-group">
+            <label for="filterTeacher">Professeur</label>
+            <select id="filterTeacher">
+                <option value="">Tous les professeurs</option>
+                {% for teacher in teachers %}
+                <option value="{{ teacher.id }}">{{ teacher.prenom }} {{ teacher.nom }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filterSubject">Matière</label>
+            <select id="filterSubject">
+                <option value="">Toutes les matières</option>
+                {% for subject in subjects %}
+                <option value="{{ subject }}">{{ subject }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filterStatus">Statut</label>
+            <select id="filterStatus">
+                <option value="">Tous</option>
+                <option value="published">Publiés</option>
+                <option value="draft">Brouillons</option>
+                <option value="overdue">Échéances passées</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Statistiques détaillées -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <h3>Devoirs par statut</h3>
+                <i class="fas fa-chart-pie"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-item">
+                    <span class="stat-dot published"></span>
+                    <span class="stat-label">Publiés</span>
+                    <span class="stat-value">{{ homework|selectattr('is_published')|list|length }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-dot draft"></span>
+                    <span class="stat-label">Brouillons</span>
+                    <span class="stat-value">{{ homework|rejectattr('is_published')|list|length }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-dot overdue"></span>
+                    <span class="stat-label">Échéances passées</span>
+                    <span class="stat-value">{{ homework|selectattr('is_overdue')|list|length }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <h3>Soumissions par statut</h3>
+                <i class="fas fa-chart-bar"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-item">
+                    <span class="stat-dot submitted"></span>
+                    <span class="stat-label">Soumises</span>
+                    <span class="stat-value" id="totalSubmitted">{{ total_submissions }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-dot graded"></span>
+                    <span class="stat-label">Corrigées</span>
+                    <span class="stat-value" id="totalGraded">{{ graded_submissions }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-dot pending"></span>
+                    <span class="stat-label">En attente</span>
+                    <span class="stat-value" id="totalPending">{{ total_submissions - graded_submissions }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des devoirs -->
+    <div class="homework-list">
+        <div class="list-header">
+            <h2>Tous les devoirs</h2>
+            <div class="sort-controls">
+                <label for="sortBy">Trier par:</label>
+                <select id="sortBy">
+                    <option value="created_at">Date de création</option>
+                    <option value="due_date">Date limite</option>
+                    <option value="title">Titre</option>
+                    <option value="submissions">Soumissions</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="homework-grid" id="homeworkGrid">
+            {% for hw in homework %}
+            <div class="homework-card" 
+                 data-teacher="{{ hw.teacher_id }}" 
+                 data-subject="{{ hw.subject or '' }}"
+                 data-status="{% if hw.is_published %}published{% else %}draft{% endif %}{% if hw.is_overdue %} overdue{% endif %}">
+                <div class="card-header">
+                    <div class="card-title">
+                        <h3>{{ hw.title }}</h3>
+                        <div class="card-meta">
+                            <span class="teacher">{{ hw.teacher.prenom }} {{ hw.teacher.nom }}</span>
+                            {% if hw.subject %}
+                            <span class="subject">{{ hw.subject }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-status">
+                        <span class="status-badge {% if hw.is_published %}published{% else %}draft{% endif %}">
+                            {% if hw.is_published %}
+                                <i class="fas fa-eye"></i> Publié
+                            {% else %}
+                                <i class="fas fa-eye-slash"></i> Brouillon
+                            {% endif %}
+                        </span>
+                        {% if hw.is_overdue %}
+                        <span class="overdue-badge">
+                            <i class="fas fa-exclamation-triangle"></i> Échéance passée
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-content">
+                    <div class="description">
+                        {{ hw.description[:120] }}{% if hw.description|length > 120 %}...{% endif %}
+                    </div>
+                    
+                    <div class="homework-stats">
+                        <div class="stat">
+                            <i class="fas fa-calendar"></i>
+                            <span>{{ hw.due_date[:10] }}</span>
+                        </div>
+                        <div class="stat">
+                            <i class="fas fa-star"></i>
+                            <span>{{ hw.points }} pts</span>
+                        </div>
+                        <div class="stat">
+                            <i class="fas fa-users"></i>
+                            <span>{{ hw.submission_count }} soumissions</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-actions">
+                    <a href="{{ url_for('homework_detail', homework_id=hw.id) }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-eye"></i> Voir détails
+                    </a>
+                    {% if hw.submission_count > 0 %}
+                    <button class="btn btn-sm btn-info" onclick="viewSubmissions({{ hw.id }})">
+                        <i class="fas fa-list"></i> Soumissions
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if not homework %}
+        <div class="empty-state">
+            <i class="fas fa-tasks"></i>
+            <h3>Aucun devoir créé</h3>
+            <p>Les professeurs n'ont pas encore créé de devoirs.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.admin-homework-dashboard {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+    color: var(--dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.header-stats {
+    display: flex;
+    gap: 2rem;
+}
+
+.stat-mini {
+    text-align: center;
+}
+
+.stat-mini .number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.stat-mini .label {
+    font-size: 0.875rem;
+    color: var(--gray);
+}
+
+.filters-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--dark);
+    font-size: 0.875rem;
+}
+
+.filter-group select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    background: white;
+}
+
+.filter-group select:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.stat-header h3 {
+    margin: 0;
+    color: var(--dark);
+    font-size: 1rem;
+}
+
+.stat-header i {
+    color: var(--primary);
+    font-size: 1.25rem;
+}
+
+.stat-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.stat-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.stat-dot.published { background: #28a745; }
+.stat-dot.draft { background: #6c757d; }
+.stat-dot.overdue { background: #dc3545; }
+.stat-dot.submitted { background: var(--primary); }
+.stat-dot.graded { background: #28a745; }
+.stat-dot.pending { background: #ffc107; }
+
+.stat-label {
+    flex: 1;
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.homework-list {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-light);
+}
+
+.list-header h2 {
+    margin: 0;
+    color: var(--dark);
+}
+
+.sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sort-controls label {
+    font-size: 0.875rem;
+    color: var(--gray);
+}
+
+.sort-controls select {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+}
+
+.homework-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.homework-card {
+    border: 1px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.homework-card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.card-title h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--dark);
+    font-size: 1.125rem;
+}
+
+.card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.teacher {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.subject {
+    color: var(--gray);
+}
+
+.card-status {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    text-align: center;
+}
+
+.status-badge.published {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.status-badge.draft {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+
+.overdue-badge {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.625rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.card-content {
+    margin-bottom: 1.5rem;
+}
+
+.description {
+    color: var(--gray);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.homework-stats {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.homework-stats .stat {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--gray);
+}
+
+.homework-stats .stat i {
+    color: var(--primary);
+}
+
+.card-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--gray);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: var(--dark);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-homework-dashboard {
+        padding: 1rem;
+    }
+    
+    .dashboard-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .filters-section {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .homework-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+</style>
+
+<script>
+// Filtrage
+function filterHomework() {
+    const teacherFilter = document.getElementById('filterTeacher').value;
+    const subjectFilter = document.getElementById('filterSubject').value;
+    const statusFilter = document.getElementById('filterStatus').value;
+    
+    const cards = document.querySelectorAll('.homework-card');
+    
+    cards.forEach(card => {
+        let show = true;
+        
+        if (teacherFilter && card.dataset.teacher !== teacherFilter) {
+            show = false;
+        }
+        
+        if (subjectFilter && card.dataset.subject !== subjectFilter) {
+            show = false;
+        }
+        
+        if (statusFilter && !card.dataset.status.includes(statusFilter)) {
+            show = false;
+        }
+        
+        card.style.display = show ? 'block' : 'none';
+    });
+}
+
+// Tri
+function sortHomework() {
+    const sortBy = document.getElementById('sortBy').value;
+    const grid = document.getElementById('homeworkGrid');
+    const cards = Array.from(grid.children);
+    
+    cards.sort((a, b) => {
+        // Logique de tri basée sur les attributs data ou le contenu
+        // À implémenter selon les besoins
+        return 0;
+    });
+    
+    cards.forEach(card => grid.appendChild(card));
+}
+
+// Event listeners
+document.getElementById('filterTeacher').addEventListener('change', filterHomework);
+document.getElementById('filterSubject').addEventListener('change', filterHomework);
+document.getElementById('filterStatus').addEventListener('change', filterHomework);
+document.getElementById('sortBy').addEventListener('change', sortHomework);
+
+function viewSubmissions(homeworkId) {
+    window.location.href = `/homework/${homeworkId}`;
+}
+</script>
+{% endblock %}

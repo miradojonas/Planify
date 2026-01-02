@@ -1,0 +1,716 @@
+{% extends "base.html" %}
+
+{% block title %}Paramètres - PLANIFY{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="settings-header">
+        <h1><i class="fas fa-cog"></i> Paramètres du Profil</h1>
+        <div class="breadcrumb">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <i class="fas fa-chevron-right"></i>
+            <span>Paramètres</span>
+        </div>
+    </div>
+
+    <div class="settings-content">
+        <!-- Section Photo de Profil -->
+        <div class="settings-section">
+            <div class="section-header">
+                <h2><i class="fas fa-camera"></i> Photo de Profil</h2>
+                <p>Personnalisez votre avatar sur PLANIFY</p>
+            </div>
+            
+            <div class="profile-photo-section">
+                <div class="current-photo">
+                    {% if current_user.profile_photo %}
+                    <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_photo) }}" 
+                         alt="Photo de profil" id="currentPhoto">
+                    {% else %}
+                    <div class="default-avatar" id="currentPhoto">
+                        {{ current_user.get_initials() }}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="photo-actions">
+                    <label for="photoUpload" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Changer la photo
+                    </label>
+                    <input type="file" id="photoUpload" accept="image/*" style="display: none;">
+                    
+                    {% if current_user.profile_photo %}
+                    <button class="btn btn-secondary" onclick="removePhoto()">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </button>
+                    {% endif %}
+                </div>
+                
+                <div class="photo-preview" id="photoPreview" style="display: none;">
+                    <img id="previewImage" alt="Aperçu">
+                    <div class="preview-actions">
+                        <button class="btn btn-success" onclick="uploadPhoto()">
+                            <i class="fas fa-check"></i> Confirmer
+                        </button>
+                        <button class="btn btn-secondary" onclick="cancelPreview()">
+                            <i class="fas fa-times"></i> Annuler
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Informations Personnelles -->
+        <div class="settings-section">
+            <div class="section-header">
+                <h2><i class="fas fa-user"></i> Informations Personnelles</h2>
+                <p>Modifiez vos informations de base</p>
+            </div>
+            
+            <form id="profileForm" class="settings-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="prenom">Prénom *</label>
+                        <input type="text" id="prenom" name="prenom" value="{{ current_user.prenom }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="nom">Nom *</label>
+                        <input type="text" id="nom" name="nom" value="{{ current_user.nom }}" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" value="{{ current_user.email }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="bio">Biographie</label>
+                    <textarea id="bio" name="bio" rows="3" placeholder="Parlez-nous de vous...">{{ current_user.bio or '' }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Téléphone</label>
+                    <input type="tel" id="phone" name="phone" value="{{ current_user.phone or '' }}" placeholder="+33 6 12 34 56 78">
+                </div>
+                
+                <div class="form-group">
+                    <label for="birth_date">Date de naissance</label>
+                    <input type="date" id="birth_date" name="birth_date" value="{{ current_user.birth_date.strftime('%Y-%m-%d') if current_user.birth_date else '' }}">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Enregistrer les modifications
+                    </button>
+                    <button type="reset" class="btn btn-secondary">
+                        <i class="fas fa-undo"></i> Annuler
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Section Sécurité -->
+        <div class="settings-section">
+            <div class="section-header">
+                <h2><i class="fas fa-shield-alt"></i> Sécurité</h2>
+                <p>Gérez votre mot de passe et la sécurité de votre compte</p>
+            </div>
+            
+            <form id="passwordForm" class="settings-form">
+                <div class="form-group">
+                    <label for="current_password">Mot de passe actuel *</label>
+                    <input type="password" id="current_password" name="current_password" required>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="new_password">Nouveau mot de passe *</label>
+                        <input type="password" id="new_password" name="new_password" minlength="6" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirm_password">Confirmer le mot de passe *</label>
+                        <input type="password" id="confirm_password" name="confirm_password" minlength="6" required>
+                    </div>
+                </div>
+                
+                <div class="password-strength" id="passwordStrength" style="display: none;">
+                    <div class="strength-bar">
+                        <div class="strength-fill"></div>
+                    </div>
+                    <span class="strength-text"></span>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-key"></i> Changer le mot de passe
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Section Préférences -->
+        <div class="settings-section">
+            <div class="section-header">
+                <h2><i class="fas fa-palette"></i> Préférences</h2>
+                <p>Personnalisez votre expérience PLANIFY</p>
+            </div>
+            
+            <form id="preferencesForm" class="settings-form">
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="email_notifications" name="email_notifications" 
+                               {% if current_user.email_notifications %}checked{% endif %}>
+                        <span class="checkmark"></span>
+                        Recevoir les notifications par email
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="homework_reminders" name="homework_reminders" 
+                               {% if current_user.homework_reminders %}checked{% endif %}>
+                        <span class="checkmark"></span>
+                        Rappels automatiques pour les devoirs
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label for="theme">Thème de l'interface</label>
+                    <select id="theme" name="theme">
+                        <option value="light" {% if current_user.theme == 'light' %}selected{% endif %}>Clair</option>
+                        <option value="dark" {% if current_user.theme == 'dark' %}selected{% endif %}>Sombre</option>
+                        <option value="auto" {% if current_user.theme == 'auto' %}selected{% endif %}>Automatique</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="language">Langue</label>
+                    <select id="language" name="language">
+                        <option value="fr" {% if current_user.language == 'fr' %}selected{% endif %}>Français</option>
+                        <option value="en" disabled>English (bientôt)</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Enregistrer les préférences
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.settings-container {
+    padding: 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.settings-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-light);
+}
+
+.settings-header h1 {
+    margin: 0 0 0.5rem 0;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.breadcrumb a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.settings-section {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.section-header {
+    background: var(--light);
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.section-header h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+}
+
+.section-header p {
+    margin: 0;
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.settings-form {
+    padding: 2rem;
+}
+
+.profile-photo-section {
+    padding: 2rem;
+    text-align: center;
+}
+
+.current-photo {
+    margin-bottom: 1.5rem;
+}
+
+.current-photo img,
+.default-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--primary);
+}
+
+.default-avatar {
+    background: var(--gradient-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 auto;
+}
+
+.photo-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.photo-preview {
+    background: var(--light);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    margin-top: 1rem;
+}
+
+.photo-preview img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--primary);
+    margin-bottom: 1rem;
+}
+
+.preview-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-weight: 500 !important;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.checkmark {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--gray-light);
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gray-light);
+}
+
+.password-strength {
+    margin-top: 0.5rem;
+}
+
+.strength-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-light);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.25rem;
+}
+
+.strength-fill {
+    height: 100%;
+    transition: all 0.3s ease;
+    border-radius: 3px;
+}
+
+.strength-fill.weak {
+    width: 25%;
+    background: #dc3545;
+}
+
+.strength-fill.fair {
+    width: 50%;
+    background: #ffc107;
+}
+
+.strength-fill.good {
+    width: 75%;
+    background: #fd7e14;
+}
+
+.strength-fill.strong {
+    width: 100%;
+    background: #28a745;
+}
+
+.strength-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .settings-container {
+        padding: 1rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .photo-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+</style>
+
+<script>
+// Upload de photo de profil
+document.getElementById('photoUpload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        if (file.size > 5 * 1024 * 1024) { // 5MB max
+            alert('La taille de l\'image ne doit pas dépasser 5MB');
+            return;
+        }
+        
+        if (!file.type.startsWith('image/')) {
+            alert('Veuillez sélectionner une image valide');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImage').src = e.target.result;
+            document.getElementById('photoPreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Annuler l'aperçu
+function cancelPreview() {
+    document.getElementById('photoPreview').style.display = 'none';
+    document.getElementById('photoUpload').value = '';
+}
+
+// Upload de la photo
+async function uploadPhoto() {
+    const fileInput = document.getElementById('photoUpload');
+    const file = fileInput.files[0];
+    
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('photo', file);
+    
+    try {
+        const response = await fetch('/api/profile/upload-photo', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Mettre à jour l'affichage
+            document.getElementById('currentPhoto').src = result.photo_url;
+            document.getElementById('photoPreview').style.display = 'none';
+            alert('Photo de profil mise à jour avec succès!');
+            location.reload();
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de l\'upload de la photo');
+    }
+}
+
+// Supprimer la photo
+async function removePhoto() {
+    if (confirm('Êtes-vous sûr de vouloir supprimer votre photo de profil?')) {
+        try {
+            const response = await fetch('/api/profile/remove-photo', {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('Erreur: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la suppression');
+        }
+    }
+}
+
+// Mise à jour du profil
+document.getElementById('profileForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch('/api/profile/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Profil mis à jour avec succès!');
+            location.reload();
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la mise à jour');
+    }
+});
+
+// Changement de mot de passe
+document.getElementById('passwordForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const newPassword = document.getElementById('new_password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    
+    if (newPassword !== confirmPassword) {
+        alert('Les mots de passe ne correspondent pas');
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch('/api/profile/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Mot de passe changé avec succès!');
+            this.reset();
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors du changement de mot de passe');
+    }
+});
+
+// Préférences
+document.getElementById('preferencesForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    // Gérer les checkboxes
+    data.email_notifications = document.getElementById('email_notifications').checked;
+    data.homework_reminders = document.getElementById('homework_reminders').checked;
+    
+    try {
+        const response = await fetch('/api/profile/preferences', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Préférences enregistrées avec succès!');
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de l\'enregistrement');
+    }
+});
+
+// Vérification de la force du mot de passe
+document.getElementById('new_password').addEventListener('input', function() {
+    const password = this.value;
+    const strengthDiv = document.getElementById('passwordStrength');
+    const strengthFill = strengthDiv.querySelector('.strength-fill');
+    const strengthText = strengthDiv.querySelector('.strength-text');
+    
+    if (password.length === 0) {
+        strengthDiv.style.display = 'none';
+        return;
+    }
+    
+    strengthDiv.style.display = 'block';
+    
+    let strength = 0;
+    let strengthLabel = '';
+    
+    // Critères de force
+    if (password.length >= 8) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    
+    // Classification
+    if (strength <= 2) {
+        strengthFill.className = 'strength-fill weak';
+        strengthLabel = 'Faible';
+    } else if (strength === 3) {
+        strengthFill.className = 'strength-fill fair';
+        strengthLabel = 'Moyen';
+    } else if (strength === 4) {
+        strengthFill.className = 'strength-fill good';
+        strengthLabel = 'Bon';
+    } else {
+        strengthFill.className = 'strength-fill strong';
+        strengthLabel = 'Fort';
+    }
+    
+    strengthText.textContent = strengthLabel;
+});
+</script>
+{% endblock %}

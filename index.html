@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Plinify{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Bonjour {{ current_user.prenom }} ! 👋</h1>
+        <p>Bienvenue sur votre tableau de bord Plinify</p>
+    </div>
+    
+    <div class="dashboard-grid">
+        <div class="stats-card">
+            <div class="stats-number">{{ events_today|length }}</div>
+            <div class="stats-label">Événements aujourd'hui</div>
+            <i class="fas fa-calendar-day"></i>
+        </div>
+        
+        <div class="stats-card" style="background: var(--gradient-accent);">
+            <div class="stats-number">{{ assignments|length }}</div>
+            <div class="stats-label">Devoirs à venir</div>
+            <i class="fas fa-tasks"></i>
+        </div>
+        
+        <div class="stats-card" style="background: var(--gradient-secondary);">
+            <div class="stats-number">{{ courses_today|length }}</div>
+            <div class="stats-label">Cours aujourd'hui</div>
+            <i class="fas fa-book"></i>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i class="fas fa-calendar-day"></i>
+            Aujourd'hui - {{ now.strftime('%A %d %B %Y') }}
+        </h2>
+        <a href="{{ url_for('calendar') }}" class="btn btn-outline">
+            <i class="fas fa-calendar"></i>
+            Voir le calendrier
+        </a>
+    </div>
+    
+    {% if events_today %}
+    <div class="events-list">
+        {% for event in events_today %}
+        <div class="event-item">
+            <div class="event-content">
+                <h4>{{ event.title }}</h4>
+                <p class="event-time">
+                    {{ event.start_date.strftime('%H:%M') }}
+                    {% if event.location %} - {{ event.location }}{% endif %}
+                </p>
+                {% if event.description %}
+                <p class="event-description">{{ event.description[:100] }}{% if event.description|length > 100 %}...{% endif %}</p>
+                {% endif %}
+            </div>
+            <span class="event-type" style="background: {{ event.color }};">
+                {{ event.event_type }}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-calendar-check"></i>
+        <p>Aucun événement prévu aujourd'hui</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i class="fas fa-tasks"></i>
+            Devoirs à venir
+        </h2>
+        <a href="#" class="btn btn-outline">
+            <i class="fas fa-eye"></i>
+            Voir tout
+        </a>
+    </div>
+    
+    {% if assignments %}
+    <div class="assignments-list">
+        {% for assignment in assignments %}
+        <div class="assignment-item">
+            <div class="assignment-content">
+                <h4>{{ assignment.title }}</h4>
+                <p class="assignment-due">
+                    Pour le {{ assignment.due_date.strftime('%d/%m/%Y à %H:%M') }}
+                </p>
+                {% if assignment.description %}
+                <p class="assignment-description">{{ assignment.description[:150] }}{% if assignment.description|length > 150 %}...{% endif %}</p>
+                {% endif %}
+            </div>
+            <span class="assignment-status assignment-{{ assignment.status }}">
+                {{ assignment.status|title }}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-tasks"></i>
+        <p>Aucun devoir à rendre prochainement</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i class="fas fa-rocket"></i>
+            Accès Rapide
+        </h2>
+    </div>
+    <div class="quick-access-grid">
+        <a href="{{ url_for('edt') }}" class="quick-access-item">
+            <i class="fas fa-table"></i>
+            Emploi du temps
+        </a>
+        <a href="{{ url_for('chat_inbox') }}" class="quick-access-item">
+            <i class="fas fa-comments"></i>
+            Messages
+        </a>
+        <a href="{{ url_for('ai_chat') }}" class="quick-access-item">
+            <i class="fas fa-robot"></i>
+            Assistant IA
+        </a>
+        <a href="{{ url_for('calendar') }}" class="quick-access-item">
+            <i class="fas fa-calendar-plus"></i>
+            Nouvel événement
+        </a>
+    </div>
+</div>
+
+<style>
+.stats-card i {
+    font-size: 2rem;
+    opacity: 0.7;
+    margin-top: 1rem;
+}
+
+.event-item {
+    border-left: 4px solid;
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.event-content h4 {
+    margin: 0;
+    color: var(--dark);
+}
+
+.event-time {
+    margin: 0.25rem 0;
+    color: var(--gray);
+}
+
+.event-description {
+    margin: 0;
+    color: var(--gray);
+}
+
+.event-type {
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+}
+
+.assignment-item {
+    padding: 1rem;
+    border: 1px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+}
+
+.assignment-content h4 {
+    margin: 0;
+    color: var(--dark);
+}
+
+.assignment-due {
+    margin: 0.25rem 0;
+    color: var(--gray);
+}
+
+.assignment-description {
+    margin: 0;
+    color: var(--gray);
+}
+
+.assignment-status {
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+}
+
+.assignment-pending {
+    background: var(--secondary);
+}
+
+.assignment-submitted {
+    background: var(--accent);
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--gray);
+    padding: 2rem;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.quick-access-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.quick-access-item {
+    background: transparent;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    padding: 2rem 1rem;
+    text-decoration: none;
+    color: var(--dark);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.quick-access-item:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.quick-access-item i {
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+</style>
+{% endblock %}

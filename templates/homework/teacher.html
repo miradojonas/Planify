@@ -1,0 +1,657 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des Devoirs - PLANIFY{% endblock %}
+
+{% block content %}
+<div class="teacher-dashboard">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-chalkboard-teacher"></i> Mes Devoirs Créés</h1>
+        <button class="btn btn-primary" onclick="openCreateHomeworkModal()">
+            <i class="fas fa-plus"></i> Nouveau Devoir
+        </button>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon total">
+                <i class="fas fa-tasks"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ homework|length }}</h3>
+                <p>Devoirs créés</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon published">
+                <i class="fas fa-eye"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ homework|selectattr('is_published')|list|length }}</h3>
+                <p>Publiés</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon submissions">
+                <i class="fas fa-paper-plane"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="totalSubmissions">{{ homework|map(attribute='submission_count')|sum }}</h3>
+                <p>Soumissions</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon overdue">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ homework|selectattr('is_overdue')|list|length }}</h3>
+                <p>Échéances passées</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des devoirs -->
+    <div class="homework-table-container">
+        <table class="homework-table">
+            <thead>
+                <tr>
+                    <th>Titre</th>
+                    <th>Matière</th>
+                    <th>Date limite</th>
+                    <th>Points</th>
+                    <th>Statut</th>
+                    <th>Soumissions</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for hw in homework %}
+                <tr>
+                    <td>
+                        <div class="homework-title">
+                            <strong>{{ hw.title }}</strong>
+                            <div class="homework-description">{{ hw.description[:80] }}{% if hw.description|length > 80 %}...{% endif %}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="subject-badge">{{ hw.subject or 'Général' }}</span>
+                    </td>
+                    <td>
+                        <div class="due-date {% if hw.is_overdue %}overdue{% endif %}">
+                            <i class="fas fa-calendar"></i>
+                            {{ hw.due_date[:10] }}<br>
+                            <small>{{ hw.due_date[11:16] }}</small>
+                            {% if hw.is_overdue %}
+                                <div class="overdue-badge">Échéance passée</div>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="points-badge">{{ hw.points }} pts</span>
+                    </td>
+                    <td>
+                        <span class="status-badge {% if hw.is_published %}published{% else %}draft{% endif %}">
+                            {% if hw.is_published %}
+                                <i class="fas fa-eye"></i> Publié
+                            {% else %}
+                                <i class="fas fa-eye-slash"></i> Brouillon
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="submission-count">
+                            <span class="count">{{ hw.submission_count }}</span>
+                            {% if hw.submission_count > 0 %}
+                                <i class="fas fa-users"></i>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('homework_detail', homework_id=hw.id) }}" class="btn-icon btn-view" title="Voir détails">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <button class="btn-icon btn-edit" onclick="editHomework({{ hw.id }})" title="Modifier">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="deleteHomework({{ hw.id }}, '{{ hw.title }}')" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if not homework %}
+    <div class="empty-state">
+        <i class="fas fa-tasks"></i>
+        <h3>Aucun devoir créé</h3>
+        <p>Commencez par créer votre premier devoir.</p>
+        <button class="btn btn-primary" onclick="openCreateHomeworkModal()">
+            <i class="fas fa-plus"></i> Créer un devoir
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Créer Devoir -->
+<div class="modal" id="createHomeworkModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus"></i> Créer un Devoir</h3>
+            <button class="modal-close" onclick="closeCreateHomeworkModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="createHomeworkForm">
+                <div class="form-group">
+                    <label for="createTitle">Titre *</label>
+                    <input type="text" id="createTitle" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="createDescription">Description *</label>
+                    <textarea id="createDescription" name="description" rows="4" required></textarea>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="createSubject">Matière</label>
+                        <input type="text" id="createSubject" name="subject" placeholder="Ex: Mathématiques">
+                    </div>
+                    <div class="form-group">
+                        <label for="createPoints">Points *</label>
+                        <input type="number" id="createPoints" name="points" value="20" min="1" max="100" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="createDueDate">Date et heure limite *</label>
+                    <input type="datetime-local" id="createDueDate" name="due_date" required>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="createIsPublished" name="is_published" checked>
+                        <span class="checkmark"></span>
+                        Publier immédiatement (visible par les élèves)
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateHomeworkModal()">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Créer le devoir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.teacher-dashboard {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+    color: var(--dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: white;
+}
+
+.stat-icon.total { background: var(--gradient-primary); }
+.stat-icon.published { background: linear-gradient(135deg, #28a745, #20c997); }
+.stat-icon.submissions { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+.stat-icon.overdue { background: linear-gradient(135deg, #dc3545, #fd7e14); }
+
+.stat-info h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--dark);
+}
+
+.stat-info p {
+    margin: 0;
+    color: var(--gray);
+    font-weight: 500;
+}
+
+.homework-table-container {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.homework-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.homework-table th,
+.homework-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.homework-table th {
+    background: var(--light);
+    font-weight: 600;
+    color: var(--dark);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.homework-table tr:hover {
+    background: var(--light);
+}
+
+.homework-title strong {
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+
+.homework-description {
+    color: var(--gray);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.subject-badge {
+    background: rgba(74, 144, 226, 0.1);
+    color: var(--primary);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.due-date {
+    font-size: 0.875rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+
+.due-date.overdue {
+    color: #dc3545;
+}
+
+.overdue-badge {
+    background: #dc3545;
+    color: white;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.points-badge {
+    background: rgba(255, 193, 7, 0.1);
+    color: #b8860b;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-badge.published {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.status-badge.draft {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+
+.submission-count {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.submission-count .count {
+    font-size: 1.125rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    text-decoration: none;
+}
+
+.btn-view {
+    background: rgba(74, 144, 226, 0.1);
+    color: var(--primary);
+}
+
+.btn-view:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-edit {
+    background: rgba(255, 193, 7, 0.1);
+    color: #b8860b;
+}
+
+.btn-edit:hover {
+    background: #ffc107;
+    color: var(--dark);
+}
+
+.btn-delete {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.btn-delete:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--gray);
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: var(--dark);
+}
+
+.empty-state p {
+    margin-bottom: 2rem;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    width: 90%;
+    max-width: 600px;
+    box-shadow: var(--shadow-lg);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.modal-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--gray);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+    background: var(--gray-light);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 500 !important;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gray-light);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .teacher-dashboard {
+        padding: 1rem;
+    }
+    
+    .dashboard-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .homework-table-container {
+        overflow-x: auto;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+function openCreateHomeworkModal() {
+    document.getElementById('createHomeworkModal').style.display = 'flex';
+    
+    // Définir la date par défaut à demain 23:59
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(23, 59);
+    document.getElementById('createDueDate').value = tomorrow.toISOString().slice(0, 16);
+}
+
+function closeCreateHomeworkModal() {
+    document.getElementById('createHomeworkModal').style.display = 'none';
+    document.getElementById('createHomeworkForm').reset();
+}
+
+// Créer devoir
+document.getElementById('createHomeworkForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    data.is_published = document.getElementById('createIsPublished').checked;
+    
+    fetch('/api/homework/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Devoir créé avec succès!');
+            location.reload();
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la création');
+    });
+});
+
+function editHomework(homeworkId) {
+    // TODO: Implémenter la modification
+    alert('Fonctionnalité de modification à venir');
+}
+
+function deleteHomework(homeworkId, title) {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer le devoir "${title}" ?\n\nToutes les soumissions seront également supprimées.`)) {
+        fetch(`/api/homework/${homeworkId}/delete`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('Devoir supprimé avec succès!');
+                location.reload();
+            } else {
+                alert('Erreur: ' + result.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la suppression');
+        });
+    }
+}
+</script>
+{% endblock %}

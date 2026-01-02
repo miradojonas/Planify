@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block title %}Assistant IA - Plinify{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">
+            <i class="fas fa-robot"></i>
+            Assistant IA Éducatif
+        </h1>
+        <div class="ai-status">
+            <div class="status-indicator online"></div>
+            <span>En ligne</span>
+        </div>
+    </div>
+    
+    <div class="ai-chat-container">
+        <div class="ai-chat-messages" id="aiChatMessages">
+            <div class="ai-message ai-response">
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-sender">Assistant IA</div>
+                    <div class="message-text">
+                        <p>Bonjour {{ current_user.prenom }} ! 👋 Je suis votre assistant IA éducatif.</p>
+                        <p>Je peux vous aider à :</p>
+                        <ul>
+                            <li>Répondre à vos questions sur vos cours</li>
+                            <li>Créer des résumés de documents</li>
+                            <li>Générer des quiz personnalisés</li>
+                            <li>Créer des fiches de révision</li>
+                            <li>Expliquer des concepts difficiles</li>
+                        </ul>
+                        <p>N'hésitez pas à me poser vos questions !</p>
+                    </div>
+                    <div class="message-time">{{ now.strftime('%H:%M') }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="ai-chat-input">
+            <div class="input-wrapper">
+                <input type="text" id="aiMessageInput" placeholder="Posez votre question à l'assistant IA..." class="ai-input">
+                <button id="sendAiMessage" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i>
+                    Envoyer
+                </button>
+            </div>
+            <!-- Actions rapides supprimées pour une interface plus propre -->
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Outils IA Avancés</h2>
+    </div>
+    <div class="ai-tools-grid">
+        <div class="ai-tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-file-pdf"></i>
+            </div>
+            <h3>Résumé de PDF</h3>
+            <p>Téléversez un document PDF pour obtenir un résumé automatique</p>
+            <button class="btn btn-outline btn-full">
+                <i class="fas fa-upload"></i>
+                Téléverser un PDF
+            </button>
+        </div>
+        
+        <div class="ai-tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-question-circle"></i>
+            </div>
+            <h3>Générateur de Quiz</h3>
+            <p>Créez des quiz personnalisés sur n'importe quel sujet</p>
+            <button class="btn btn-outline btn-full" onclick="location.href='{{ url_for('ai_quiz') }}'">
+                <i class="fas fa-play"></i>
+                Créer un quiz
+            </button>
+        </div>
+        
+        <div class="ai-tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-lightbulb"></i>
+            </div>
+            <h3>Fiches de Révision</h3>
+            <p>Générez des fiches de révision structurées automatiquement</p>
+            <button class="btn btn-outline btn-full">
+                <i class="fas fa-file-alt"></i>
+                Créer une fiche
+            </button>
+        </div>
+        
+        <div class="ai-tool-card">
+            <div class="tool-icon">
+                <i class="fas fa-chart-bar"></i>
+            </div>
+            <h3>Analyse de Performance</h3>
+            <p>Analysez vos résultats et obtenez des conseils personnalisés</p>
+            <button class="btn btn-outline btn-full">
+                <i class="fas fa-chart-line"></i>
+                Analyser
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.ai-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--gray);
+    font-size: 0.875rem;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-indicator.online {
+    background: var(--accent);
+}
+
+.ai-chat-container {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    height: 60vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.ai-chat-messages {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+    background: var(--light);
+}
+
+.ai-message {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    animation: messageSlide 0.3s ease;
+}
+
+.ai-response {
+    align-items: flex-start;
+}
+
+.user-message {
+    align-items: flex-end;
+    flex-direction: row-reverse;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ai-response .message-avatar {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+.user-message .message-avatar {
+    background: var(--gradient-accent);
+    color: white;
+}
+
+.message-content {
+    max-width: 70%;
+    background: white;
+    padding: 1rem 1.25rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--gray-light);
+}
+
+.ai-response .message-content {
+    border-bottom-left-radius: 4px;
+}
+
+.user-message .message-content {
+    background: var(--gradient-primary);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.message-sender {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.user-message .message-sender {
+    text-align: right;
+}
+
+.message-text {
+    line-height: 1.5;
+}
+
+.message-text ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.message-text li {
+    margin: 0.25rem 0;
+}
+
+.message-time {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: 0.5rem;
+    text-align: right;
+}
+
+.ai-chat-input {
+    padding: 1.5rem;
+    border-top: 1px solid var(--gray-light);
+    background: white;
+}
+
+.input-wrapper {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.ai-input {
+    flex: 1;
+    padding: 1rem 1.25rem;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.ai-input:focus {
+    border-color: var(--primary);
+}
+
+.quick-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.quick-action-btn {
+    background: var(--light);
+    border: 1px solid var(--gray-light);
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.quick-action-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.ai-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.ai-tool-card {
+    background: white;
+    border: 2px solid var(--gray-light);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.ai-tool-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-5px);
+    box-shadow: var(--shadow);
+}
+
+.tool-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--gradient-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    margin: 0 auto 1rem;
+}
+
+.ai-tool-card h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--dark);
+}
+
+.ai-tool-card p {
+    color: var(--gray);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin-bottom: 1.5rem;
+}
+
+.btn-full {
+    width: 100%;
+}
+</style>
+
+<script>
+const aiChatMessages = document.getElementById('aiChatMessages');
+const aiMessageInput = document.getElementById('aiMessageInput');
+const sendAiMessage = document.getElementById('sendAiMessage');
+
+function addAiMessage(message, isUser = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `ai-message ${isUser ? 'user-message' : 'ai-response'}`;
+    
+    const timestamp = new Date().toLocaleTimeString('fr-FR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
+    
+    const avatarIcon = isUser ? 'fas fa-user' : 'fas fa-robot';
+    const senderName = isUser ? 'Vous' : 'Assistant IA';
+    
+    messageDiv.innerHTML = `
+        <div class="message-avatar">
+            <i class="${avatarIcon}"></i>
+        </div>
+        <div class="message-content">
+            <div class="message-sender">${senderName}</div>
+            <div class="message-text">${message}</div>
+            <div class="message-time">${timestamp}</div>
+        </div>
+    `;
+    
+    aiChatMessages.appendChild(messageDiv);
+    aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
+}
+
+function sendAiChatMessage() {
+    const message = aiMessageInput.value.trim();
+    if (!message) return;
+
+    // Add user message immediately
+    addAiMessage(message, true);
+    aiMessageInput.value = '';
+
+    // Show loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'ai-message ai-response';
+    loadingDiv.innerHTML = `
+        <div class="message-avatar">
+            <i class="fas fa-robot"></i>
+        </div>
+        <div class="message-content">
+            <div class="message-sender">Assistant IA</div>
+            <div class="message-text">
+                <i class="fas fa-spinner fa-spin"></i> Réflexion en cours...
+            </div>
+        </div>
+    `;
+    aiChatMessages.appendChild(loadingDiv);
+    aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
+
+    // Send to AI API
+    fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Remove loading indicator
+        loadingDiv.remove();
+        
+        // Add AI response
+        addAiMessage(data.response);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        loadingDiv.remove();
+        addAiMessage('Désolé, une erreur est survenue. Veuillez réessayer.');
+    });
+}
+
+function suggestQuestion(question) {
+    aiMessageInput.value = question;
+    aiMessageInput.focus();
+}
+
+// Event listeners
+sendAiMessage.addEventListener('click', sendAiChatMessage);
+
+aiMessageInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendAiChatMessage();
+    }
+});
+
+// Auto-focus on input
+window.addEventListener('load', function() {
+    aiMessageInput.focus();
+});
+</script>
+{% endblock %}
