@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Flask
+instance/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads / user content
+static/uploads/
+uploads/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.*
+
+# OS / editor
+.vscode/
+.idea/
+.DS_Store
+
+# Test / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Build
+build/
+dist/
+*.egg-info/
