@@ -1,8 +1,11 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime, timedelta
-import secrets
 import os
+from urllib.parse import urlparse
+import socket
+
+from dotenv import load_dotenv
 
 from models.user import User, db
 from models.calendar import Event, Assignment
@@ -13,8 +16,103 @@ from models.homework import Homework, HomeworkSubmission
 from models.notification import Notification
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = secrets.token_hex(16)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///agenda_scolaire.db'
+load_dotenv()
+
+
+def _is_vercel() -> bool:
+    return os.environ.get('VERCEL') == '1' or bool(os.environ.get('VERCEL_ENV'))
+
+
+def _truthy_env(name: str, default: str = 'false') -> bool:
+    value = os.environ.get(name, default).strip().lower()
+    return value in {'1', 'true', 'yes', 'y', 'on'}
+
+
+def _resolve_ipv4(hostname: str) -> str | None:
+    try:
+        infos = socket.getaddrinfo(hostname, None, family=socket.AF_INET, type=socket.SOCK_STREAM)
+    except OSError:
+        return None
+    for family, _socktype, _proto, _canonname, sockaddr in infos:
+        if family == socket.AF_INET and sockaddr and sockaddr[0]:
+            return sockaddr[0]
+    return None
+
+# SECRET_KEY stable (required for sessions on deployed apps)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
+
+# Database: Supabase (Postgres) via DATABASE_URL, fallback SQLite for local dev
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    database_url = database_url.strip()
+
+    # Some providers still give postgres://; SQLAlchemy expects postgresql://
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+    if '://' not in database_url:
+        raise ValueError(
+            "DATABASE_URL invalide: tu as mis un host seul. Il faut une URI complète, ex: "
+            "postgresql://USER:PASSWORD@db.<PROJECT_REF>.supabase.co:5432/postgres"
+        )
+
+    try:
+        parsed = urlparse(database_url)
+    except ValueError as exc:
+        raise ValueError(
+            "DATABASE_URL invalide (souvent causé par des crochets [] autour du host). "
+            "Copie la valeur exactement depuis Supabase → Settings → Database → Connection string (URI). "
+            "Ex attendu: postgresql://USER:PASSWORD@db.<PROJECT_REF>.supabase.co:5432/postgres"
+        ) from exc
+
+    if '[' in database_url or ']' in database_url:
+        raise ValueError(
+            "DATABASE_URL invalide: ne mets pas de crochets [] autour du host. "
+            "Copie la connection string Supabase telle quelle (URI)."
+        )
+
+    if not parsed.scheme or not parsed.hostname:
+        raise ValueError(
+            "DATABASE_URL invalide: il manque le scheme/host. "
+            "Ex attendu: postgresql://USER:PASSWORD@db.<PROJECT_REF>.supabase.co:5432/postgres"
+        )
+
+    if parsed.hostname and 'abcdefghijklmnopqrst' in parsed.hostname:
+        raise ValueError(
+            "DATABASE_URL semble être un exemple (host contient 'abcdefghijklmnopqrst'). "
+            "Copie la vraie connection string dans Supabase → Settings → Database → Connection string (URI)."
+        )
+
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # SSL is typically required by Supabase
+    if database_url.startswith('postgresql://'):
+        connect_args: dict[str, str] = {
+            'sslmode': os.environ.get('DB_SSLMODE', 'require')
+        }
+
+        # Some networks have no IPv6 route but prefer AAAA records, leading to: "Network is unreachable".
+        # Set DB_FORCE_IPV4=true to resolve an A record and force libpq to use it.
+        if _truthy_env('DB_FORCE_IPV4') and parsed.hostname:
+            ipv4 = _resolve_ipv4(parsed.hostname)
+            if ipv4:
+                connect_args['hostaddr'] = ipv4
+
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'connect_args': {
+                **connect_args
+            }
+        }
+else:
+    # On Vercel, the project directory is read-only at runtime.
+    # If DATABASE_URL isn't set, fallback to a temporary SQLite DB to avoid crashes.
+    if _is_vercel():
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/agenda_scolaire.db'
+    else:
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///agenda_scolaire.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
 db.init_app(app)
@@ -22,6 +120,42 @@ db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+
+def _should_auto_init_db() -> bool:
+    default_value = 'false' if _is_vercel() else 'true'
+    value = os.environ.get('AUTO_INIT_DB', default_value).strip().lower()
+    return value in {'1', 'true', 'yes', 'y', 'on'}
+
+
+def _should_seed_default_users() -> bool:
+    value = os.environ.get('SEED_DEFAULT_USERS', 'false').strip().lower()
+    return value in {'1', 'true', 'yes', 'y', 'on'}
+
+
+def _init_db_if_needed() -> None:
+    if not _should_auto_init_db():
+        return
+
+    with app.app_context():
+        db.create_all()
+
+        if _should_seed_default_users() and not User.query.first():
+            admin = User(email='admin@planify.com', nom='Admin', prenom='PLANIFY', role='admin')
+            admin.set_password('admin123')
+
+            prof = User(email='prof@planify.com', nom='Martin', prenom='Sophie', role='professeur')
+            prof.set_password('prof123')
+
+            eleve = User(email='eleve@planify.com', nom='Dupont', prenom='Léo', role='eleve')
+            eleve.set_password('eleve123')
+
+            db.session.add_all([admin, prof, eleve])
+            db.session.commit()
+
+
+# Run optional initialization on import so it also works with `flask run`/WSGI.
+_init_db_if_needed()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -991,26 +1125,6 @@ def ai_suggestions():
         'role': user_role
     })
 
-# Initialisation - Interface propre sans données d'exemple
-
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        
-        # Créer utilisateurs par défaut si aucun utilisateur n'existe
-        if not User.query.first():
-            admin = User(email='admin@planify.com', nom='Admin', prenom='PLANIFY', role='admin')
-            admin.set_password('admin123')
-            
-            prof = User(email='prof@planify.com', nom='Martin', prenom='Sophie', role='professeur')
-            prof.set_password('prof123')
-            
-            eleve = User(email='eleve@planify.com', nom='Dupont', prenom='Léo', role='eleve')
-            eleve.set_password('eleve123')
-            
-            db.session.add_all([admin, prof, eleve])
-            db.session.commit()
-
 # Routes pour les notifications
 @app.route('/api/notifications')
 @login_required
@@ -1205,4 +1319,5 @@ def remove_profile_photo():
         return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
+    _init_db_if_needed()
     app.run(debug=True, host='0.0.0.0', port=5000)
