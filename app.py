@@ -2,8 +2,6 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, f
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime, timedelta
 import os
-from urllib.parse import urlparse
-import socket
 
 from dotenv import load_dotenv
 
@@ -18,100 +16,22 @@ from models.notification import Notification
 app = Flask(__name__)
 load_dotenv()
 
-
-def _is_vercel() -> bool:
-    return os.environ.get('VERCEL') == '1' or bool(os.environ.get('VERCEL_ENV'))
-
-
-def _truthy_env(name: str, default: str = 'false') -> bool:
-    value = os.environ.get(name, default).strip().lower()
-    return value in {'1', 'true', 'yes', 'y', 'on'}
-
-
-def _resolve_ipv4(hostname: str) -> str | None:
-    try:
-        infos = socket.getaddrinfo(hostname, None, family=socket.AF_INET, type=socket.SOCK_STREAM)
-    except OSError:
-        return None
-    for family, _socktype, _proto, _canonname, sockaddr in infos:
-        if family == socket.AF_INET and sockaddr and sockaddr[0]:
-            return sockaddr[0]
-    return None
-
 # SECRET_KEY stable (required for sessions on deployed apps)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
-# Database: Supabase (Postgres) via DATABASE_URL, fallback SQLite for local dev
+# Database: Postgres via DATABASE_URL (Render), fallback SQLite for local dev
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
     database_url = database_url.strip()
-
-    # Some providers still give postgres://; SQLAlchemy expects postgresql://
+    # Render (and others) may give postgres://; SQLAlchemy expects postgresql://
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
-    if '://' not in database_url:
-        raise ValueError(
-            "DATABASE_URL invalide: tu as mis un host seul. Il faut une URI complète, ex: "
-            "postgresql://USER:PASSWORD@db.<PROJECT_REF>.supabase.co:5432/postgres"
-        )
-
-    try:
-        parsed = urlparse(database_url)
-    except ValueError as exc:
-        raise ValueError(
-            "DATABASE_URL invalide (souvent causé par des crochets [] autour du host). "
-            "Copie la valeur exactement depuis Supabase → Settings → Database → Connection string (URI). "
-            "Ex attendu: postgresql://USER:PASSWORD@db.<PROJECT_REF>.supabase.co:5432/postgres"
-        ) from exc
-
-    if '[' in database_url or ']' in database_url:
-        raise ValueError(
-            "DATABASE_URL invalide: ne mets pas de crochets [] autour du host. "
-            "Copie la connection string Supabase telle quelle (URI)."
-        )
-
-    if not parsed.scheme or not parsed.hostname:
-        raise ValueError(
-            "DATABASE_URL invalide: il manque le scheme/host. "
-            "Ex attendu: postgresql://USER:PASSWORD@db.<PROJECT_REF>.supabase.co:5432/postgres"
-        )
-
-    if parsed.hostname and 'abcdefghijklmnopqrst' in parsed.hostname:
-        raise ValueError(
-            "DATABASE_URL semble être un exemple (host contient 'abcdefghijklmnopqrst'). "
-            "Copie la vraie connection string dans Supabase → Settings → Database → Connection string (URI)."
-        )
-
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-    # SSL is typically required by Supabase
-    if database_url.startswith('postgresql://'):
-        connect_args: dict[str, str] = {
-            'sslmode': os.environ.get('DB_SSLMODE', 'require')
-        }
-
-        # Some networks have no IPv6 route but prefer AAAA records, leading to: "Network is unreachable".
-        # Set DB_FORCE_IPV4=true to resolve an A record and force libpq to use it.
-        if _truthy_env('DB_FORCE_IPV4') and parsed.hostname:
-            ipv4 = _resolve_ipv4(parsed.hostname)
-            if ipv4:
-                connect_args['hostaddr'] = ipv4
-
-        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-            'connect_args': {
-                **connect_args
-            }
-        }
 else:
-    # On Vercel, the project directory is read-only at runtime.
-    # If DATABASE_URL isn't set, fallback to a temporary SQLite DB to avoid crashes.
-    if _is_vercel():
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/agenda_scolaire.db'
-    else:
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///agenda_scolaire.db'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///agenda_scolaire.db'
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
@@ -123,8 +43,7 @@ login_manager.login_view = 'login'
 
 
 def _should_auto_init_db() -> bool:
-    default_value = 'false' if _is_vercel() else 'true'
-    value = os.environ.get('AUTO_INIT_DB', default_value).strip().lower()
+    value = os.environ.get('AUTO_INIT_DB', 'true').strip().lower()
     return value in {'1', 'true', 'yes', 'y', 'on'}
 
 
